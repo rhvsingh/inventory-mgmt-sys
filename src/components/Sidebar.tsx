@@ -1,6 +1,6 @@
 import { BarChart3, LayoutDashboard, LogOut, Package, Settings, ShoppingCart, Truck, Users } from "lucide-react"
+import { logout } from "@/app/lib/actions"
 import Link from "next/link"
-import { NotificationBell } from "@/components/NotificationBell"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -20,7 +20,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Sidebar({ className, onClose }: SidebarProps) {
     return (
         <div className={cn("flex h-full w-64 flex-col border-r bg-card text-card-foreground", className)}>
-            <div className="flex h-14 items-center border-b px-4">
+            <div className="flex h-14 lg:h-[60px] items-center border-b px-4">
                 <Link href="/" className="flex items-center gap-2 font-semibold" onClick={onClose}>
                     <Package className="h-6 w-6" />
                     <span>Sports Shop IMS</span>
@@ -42,29 +42,29 @@ export function Sidebar({ className, onClose }: SidebarProps) {
                 </nav>
             </div>
             <div className="border-t p-4">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Users className="h-4 w-4" />
-                        </div>
-                        <div className="text-sm">
-                            <p className="font-medium">Admin</p>
-                            <p className="text-xs text-muted-foreground">admin@example.com</p>
-                        </div>
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Users className="h-4 w-4" />
                     </div>
-                    <NotificationBell />
+                    <div className="text-sm">
+                        <p className="font-medium">Admin</p>
+                        <p className="text-xs text-muted-foreground">admin@example.com</p>
+                    </div>
                 </div>
                 <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground hover:text-primary">
                     <Settings className="h-4 w-4" />
                     Settings
                 </Button>
-                <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                    <LogOut className="h-4 w-4" />
-                    Logout
-                </Button>
+                <form action={logout}>
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        type="submit"
+                    >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                    </Button>
+                </form>
             </div>
         </div>
     )

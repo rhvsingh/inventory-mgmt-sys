@@ -1,0 +1,11 @@
+sku,name,brand,category,costPrice,salePrice,stockQty,minStock,barcode
+TECH-001,Wireless Noise Cancelling Headphones,AudioTech,Electronics,85.00,199.99,50,10,8901234567890
+TECH-002,Smart Watch Series 5,Pear,Electronics,150.00,299.99,30,5,8901234567891
+APP-001,Cotton Crew Neck T-Shirt (M),SoftWear,Apparel,5.00,19.99,100,20,8901234567892
+APP-002,Slim Fit Jeans (32),DenimCo,Apparel,15.00,49.99,75,15,8901234567893
+HOME-001,Stainless Steel Water Bottle,EcoLife,Home,8.00,24.99,60,10,8901234567894
+HOME-002,Ceramic Coffee Mug Set,HomeStyle,Home,12.00,34.99,40,8,8901234567895
+TECH-003,USB-C Charging Cable (2m),PowerLink,Electronics,3.00,12.99,200,30,8901234567896
+FIT-001,Yoga Mat Standard,FlexFit,Fitness,10.00,29.99,45,10,8901234567897
+OFF-001,Ergonomic Office Chair,ComfortSeating,Office,120.00,249.99,15,3,8901234567898
+OFF-002,Mechanical Keyboard,Clicky,Office,45.00,89.99,25,5,8901234567899

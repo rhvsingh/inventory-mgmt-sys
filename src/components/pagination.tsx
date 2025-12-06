@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 interface PaginationProps {
     totalPages: number
@@ -13,12 +13,13 @@ interface PaginationProps {
 
 export function Pagination({ totalPages, currentPage, totalItems, pageSize }: PaginationProps) {
     const router = useRouter()
+    const pathname = usePathname()
     const searchParams = useSearchParams()
 
     const createPageURL = (pageNumber: number) => {
-        const params = new URLSearchParams(searchParams)
+        const params = new URLSearchParams(searchParams?.toString())
         params.set("page", pageNumber.toString())
-        return `?${params.toString()}`
+        return `${pathname}?${params.toString()}`
     }
 
     const onNext = () => {

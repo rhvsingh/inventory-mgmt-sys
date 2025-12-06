@@ -160,6 +160,7 @@ export async function getProducts(query?: string): Promise<Product[]> {
                           { name: { contains: query, mode: "insensitive" } },
                           { sku: { contains: query, mode: "insensitive" } },
                           { brand: { contains: query, mode: "insensitive" } },
+                          { category: { contains: query, mode: "insensitive" } },
                       ],
                   }
                 : {}),
@@ -195,6 +196,7 @@ export async function getProductsPaginated(
             { name: { contains: query, mode: "insensitive" as const } },
             { sku: { contains: query, mode: "insensitive" as const } },
             { brand: { contains: query, mode: "insensitive" as const } },
+            { category: { contains: query, mode: "insensitive" as const } },
         ]
     }
 
