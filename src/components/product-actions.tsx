@@ -16,10 +16,12 @@ import {
 
 interface ProductActionsProps {
     productId: string
+    role?: string
 }
 
-export function ProductActions({ productId }: ProductActionsProps) {
+export function ProductActions({ productId, role }: ProductActionsProps) {
     const [isPending, startTransition] = useTransition()
+    const canManage = role === "ADMIN" || role === "MANAGER"
 
     const handleArchive = () => {
         if (confirm("Are you sure you want to archive this product?")) {
@@ -27,6 +29,13 @@ export function ProductActions({ productId }: ProductActionsProps) {
                 await archiveProduct(productId)
             })
         }
+    }
+
+    // If can't manage, maybe we show nothing or just "View" (but View is default via row click maybe?)
+    // For now, let's just return null if they can't manage, effectively hiding the actions menu
+    // OR we could show "Sell" shortcut here later.
+    if (!canManage) {
+        return <div className="text-muted-foreground text-xs italic">Read-only</div>
     }
 
     return (

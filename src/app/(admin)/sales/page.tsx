@@ -47,7 +47,8 @@ export default async function SalesPage() {
                                         <div className="flex flex-col gap-1">
                                             {sale.items.map((item) => (
                                                 <span key={item.id} className="text-sm text-muted-foreground">
-                                                    {item.product?.name || "Unknown Product"} x {item.quantity}
+                                                    {item.product?.name || "Unknown Product"} x {item.quantity} ({" "}
+                                                    {formatCurrency(Number(item.product?.salePrice))})
                                                 </span>
                                             ))}
                                         </div>

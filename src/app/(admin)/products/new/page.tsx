@@ -1,5 +1,3 @@
-"use client"
-
 import { createProduct } from "@/actions/product"
 import { ProductForm } from "@/components/product-form"
 

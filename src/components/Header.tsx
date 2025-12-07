@@ -8,7 +8,15 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ModeToggle } from "@/components/mode-toggle"
 import { NotificationBell } from "@/components/NotificationBell"
 
-export function Header() {
+export function Header({
+    user,
+}: {
+    user: {
+        name?: string | null
+        email?: string | null
+        role?: string
+    }
+}) {
     const [open, setOpen] = useState(false)
 
     return (
@@ -21,7 +29,11 @@ export function Header() {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 border-r-0 bg-transparent shadow-none w-auto">
-                    <Sidebar className="w-64 border-r bg-card h-full rounded-r-lg" onClose={() => setOpen(false)} />
+                    <Sidebar
+                        className="w-64 border-r bg-card h-full rounded-r-lg"
+                        onClose={() => setOpen(false)}
+                        user={user}
+                    />
                 </SheetContent>
             </Sheet>
 

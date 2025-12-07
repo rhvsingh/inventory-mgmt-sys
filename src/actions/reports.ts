@@ -3,13 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { cacheTag, cacheLife } from "next/cache"
 
-export type LowStockReportItem = {
-    id: string
-    sku: string
-    name: string
-    stockQty: number
-    minStock: number
-}
+import type { LowStockReportItem, ValuationReport, SalesHistoryItem } from "@/types"
 
 export async function getLowStockReport(): Promise<LowStockReportItem[]> {
     "use cache"
@@ -35,22 +29,6 @@ export async function getLowStockReport(): Promise<LowStockReportItem[]> {
         },
     })
     return products
-}
-
-export type ValuationReport = {
-    params: {
-        totalCost: number
-        totalRetail: number
-        itemCount: number
-    }
-    products: {
-        id: string
-        sku: string
-        name: string
-        stockQty: number
-        costPrice: number
-        salePrice: number
-    }[]
 }
 
 export async function getInventoryValuation(): Promise<ValuationReport> {
@@ -97,54 +75,69 @@ export async function getInventoryValuation(): Promise<ValuationReport> {
     }
 }
 
-export type SalesHistoryItem = {
-    id: string
-    date: Date
-    total: number
-    items: {
-        id: string
-        quantity: number
-        product: {
-            name: string
-        }
-    }[]
-}
+import { Prisma } from "@prisma/client"
 
 export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
     "use cache"
     cacheTag("reports", "sales-history")
     cacheLife("minutes")
 
-    const transactions = await prisma.transaction.findMany({
-        where: {
-            type: "SALE",
+    const include = {
+        user: {
+            select: {
+                name: true,
+                email: true,
+            },
         },
-        include: {
-            items: {
-                include: {
-                    product: {
-                        select: {
-                            name: true,
-                        },
+        items: {
+            include: {
+                product: {
+                    select: {
+                        name: true,
                     },
                 },
             },
         },
+    } satisfies Prisma.TransactionInclude
+
+    const transactions = await prisma.transaction.findMany({
+        where: {
+            type: "SALE",
+        },
+        include,
         orderBy: {
             date: "desc",
         },
         take: 50,
     })
 
-    return transactions.map((t) => ({
+    // Explicitly define the expected structure to avoid 'any' and handle stale Prisma types
+    interface TransactionWithRelations {
+        id: string
+        date: Date
+        total: Prisma.Decimal
+        user: { name: string | null; email: string | null } | null
+        items: {
+            id: string
+            quantity: number
+            product: { name: string } | null
+        }[]
+    }
+
+    // Cast the result to the explicit structure.
+    // This is safe because the db query above ensures this shape, even if local Prisma types are stale.
+    const safeTransactions = transactions as unknown as TransactionWithRelations[]
+
+    return safeTransactions.map((t) => ({
         id: t.id,
         date: t.date,
         total: Number(t.total),
+        user: t.user,
         items: t.items.map((i) => ({
             id: i.id,
             quantity: i.quantity,
             product: {
-                name: i.product.name,
+                name: i.product?.name || "Unknown",
             },
         })),
     }))

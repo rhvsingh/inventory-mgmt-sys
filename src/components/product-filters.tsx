@@ -1,11 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
     Sheet,
-    SheetClose,
     SheetContent,
     SheetDescription,
     SheetFooter,
@@ -34,6 +33,7 @@ export function ProductFilters({ categories, brands }: ProductFiltersProps) {
     const [minPrice, setMinPrice] = useState(searchParams.get("minPrice") || "")
     const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") || "")
     const [inStock, setInStock] = useState(searchParams.get("inStock") === "true")
+    const [isArchived, setIsArchived] = useState(searchParams.get("archived") === "true")
     const [open, setOpen] = useState(false)
 
     // Sync with URL on open? No, just keep local state and sync on "Apply"
@@ -63,6 +63,9 @@ export function ProductFilters({ categories, brands }: ProductFiltersProps) {
         if (inStock) params.set("inStock", "true")
         else params.delete("inStock")
 
+        if (isArchived) params.set("archived", "true")
+        else params.delete("archived")
+
         params.set("page", "1") // Reset page
 
         router.push(`?${params.toString()}`)
@@ -75,6 +78,7 @@ export function ProductFilters({ categories, brands }: ProductFiltersProps) {
         setMinPrice("")
         setMaxPrice("")
         setInStock(false)
+        setIsArchived(false)
     }
 
     const toggleCategory = (category: string) => {
@@ -113,6 +117,16 @@ export function ProductFilters({ categories, brands }: ProductFiltersProps) {
                                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                             />
                             <Label htmlFor="inStock">In Stock Only</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="archived"
+                                checked={isArchived}
+                                onChange={(e) => setIsArchived(e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <Label htmlFor="archived">Show Archived</Label>
                         </div>
                     </div>
 

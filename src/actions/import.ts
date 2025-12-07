@@ -88,7 +88,7 @@ export async function importProducts(data: unknown[]): Promise<ImportResult> {
             result.errors.push({
                 row: index + 1,
                 error: errorMessage,
-                sku: (row as any).sku,
+                sku: (row as { sku?: string })?.sku || "Unknown",
             })
         }
     }

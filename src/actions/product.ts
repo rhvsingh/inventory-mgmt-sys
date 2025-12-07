@@ -22,7 +22,14 @@ const productSchema = z.object({
     barcode: z.string().optional(),
 })
 
+import { auth } from "@/auth"
+
 export async function createProduct(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
+    const session = await auth()
+    const role = session?.user?.role
+    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+        return { error: "Unauthorized" }
+    }
     const rawData = {
         sku: formData.get("sku"),
         name: formData.get("name"),
@@ -72,8 +79,8 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
         return { error: "Failed to create product. Please try again." }
     }
 
-    revalidateTag("products")
-    revalidateTag("reports")
+    revalidateTag("products", "minutes")
+    revalidateTag("reports", "minutes")
     revalidatePath("/products")
     redirect("/products")
 }
@@ -83,6 +90,11 @@ export async function updateProduct(
     _prevState: ActionState | null,
     formData: FormData
 ): Promise<ActionState> {
+    const session = await auth()
+    const role = session?.user?.role
+    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+        return { error: "Unauthorized" }
+    }
     const rawData = {
         sku: formData.get("sku"),
         name: formData.get("name"),
@@ -136,21 +148,26 @@ export async function updateProduct(
         return { error: "Failed to update product. Please try again." }
     }
 
-    revalidateTag("products")
-    revalidateTag(`product-${id}`)
-    revalidateTag("reports")
+    revalidateTag("products", "minutes")
+    revalidateTag(`product-${id}`, "minutes")
+    revalidateTag("reports", "minutes")
     revalidatePath("/products")
     redirect("/products")
 }
 
 export async function archiveProduct(id: string) {
+    const session = await auth()
+    const role = session?.user?.role
+    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+        throw new Error("Unauthorized")
+    }
     try {
         await prisma.product.update({
             where: { id },
             data: { isArchived: true },
         })
-        revalidateTag("products")
-        revalidateTag("reports")
+        revalidateTag("products", "minutes")
+        revalidateTag("reports", "minutes")
         revalidatePath("/products")
     } catch (error) {
         console.error("Failed to archive product:", error)
@@ -193,6 +210,7 @@ export interface ProductFilters {
     minPrice?: number
     maxPrice?: number
     inStock?: boolean
+    isArchived?: boolean
 }
 
 export async function getProductsPaginated(
@@ -240,6 +258,10 @@ export async function getProductsPaginated(
         where.stockQty = { gt: 0 }
     }
 
+    if (filters?.isArchived !== undefined) {
+        where.isArchived = filters.isArchived
+    }
+
     const [products, total] = await Promise.all([
         prisma.product.findMany({
             where,
@@ -285,9 +307,10 @@ export async function getDistinctValues() {
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
-    "use cache"
-    cacheTag(`product-${id}`, "products")
-    cacheLife("minutes")
+    // Removed 'use cache' to prevent stale data on edit screens
+    // "use cache"
+    // cacheTag(`product-${id}`, "products")
+    // cacheLife("minutes")
 
     const product = await prisma.product.findUnique({
         where: { id },

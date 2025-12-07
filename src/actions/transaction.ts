@@ -18,10 +18,24 @@ const transactionSchema = z.object({
     userId: z.string().optional(), // In real app, get from session
 })
 
+import { auth } from "@/auth"
+
 export async function createTransaction(data: {
     type: "SALE" | "PURCHASE"
     items: { productId: string; quantity: number; price: number }[]
 }) {
+    const session = await auth()
+    if (!session?.user?.id) {
+        return { error: "Unauthorized" }
+    }
+
+    const { role } = session.user
+
+    // RBAC: Clerks cannot record PURCHASES (Stock In)
+    if (data.type === "PURCHASE" && role !== "ADMIN" && role !== "MANAGER") {
+        return { error: "Unauthorized. Clerks cannot record purchases." }
+    }
+
     const validatedData = transactionSchema.safeParse(data)
 
     if (!validatedData.success) {
@@ -31,15 +45,13 @@ export async function createTransaction(data: {
     const { type, items } = validatedData.data
     const total = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
 
-    // TODO: Get actual user ID from session
-    // For now, we'll fetch the first admin user or use a placeholder
-    const adminUser = await prisma.user.findFirst({ where: { role: "ADMIN" } })
-    const userId = adminUser?.id || "placeholder-user-id"
+    // Attribute to the actual user
+    const userId = session.user.id
 
     try {
         await prisma.$transaction(async (tx) => {
             // 1. Create Transaction
-            const transaction = await tx.transaction.create({
+            await tx.transaction.create({
                 data: {
                     type,
                     total,
@@ -74,9 +86,9 @@ export async function createTransaction(data: {
         return { error: "Transaction failed" }
     }
 
-    revalidateTag("transactions")
-    revalidateTag("products") // Stock changes, so invalidate products too
-    revalidateTag("reports") // Sales/purchases change reports
+    revalidateTag("transactions", "minutes")
+    revalidateTag("products", "minutes") // Stock changes, so invalidate products too
+    revalidateTag("reports", "minutes") // Sales/purchases change reports
 
     revalidatePath("/products")
     revalidatePath("/purchases")

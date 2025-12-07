@@ -5,7 +5,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { AlertTriangle, TrendingUp, DollarSign } from "lucide-react"
 
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+
 export default async function ReportsPage() {
+    const session = await auth()
+    const role = session?.user?.role
+
+    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+        redirect("/dashboard")
+    }
+
     const [lowStockProducts, { params: valuation, products: allProducts }, salesHistory] = await Promise.all([
         getLowStockReport(),
         getInventoryValuation(),
@@ -84,7 +94,7 @@ export default async function ReportsPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {allProducts.map((p: any) => (
+                                        {allProducts.map((p) => (
                                             <tr key={p.id} className="border-b last:border-0 hover:bg-muted/50">
                                                 <td className="p-4 font-mono">{p.sku}</td>
                                                 <td className="p-4">{p.name}</td>
@@ -135,7 +145,7 @@ export default async function ReportsPage() {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            lowStockProducts.map((p: any) => (
+                                            lowStockProducts.map((p) => (
                                                 <tr key={p.id} className="border-b last:border-0 hover:bg-muted/50">
                                                     <td className="p-4 font-mono">{p.sku}</td>
                                                     <td className="p-4">{p.name}</td>
@@ -181,7 +191,7 @@ export default async function ReportsPage() {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            salesHistory.map((t: any) => (
+                                            salesHistory.map((t) => (
                                                 <tr key={t.id} className="border-b last:border-0 hover:bg-muted/50">
                                                     <td className="p-4">{formatDate(t.date)}</td>
                                                     <td className="p-4 font-mono text-xs text-muted-foreground">
@@ -189,7 +199,7 @@ export default async function ReportsPage() {
                                                     </td>
                                                     <td className="p-4">
                                                         <div className="flex flex-col gap-1">
-                                                            {t.items.map((item: any) => (
+                                                            {t.items.map((item) => (
                                                                 <span key={item.id} className="text-xs">
                                                                     {item.quantity}x {item.product.name}
                                                                 </span>

@@ -27,16 +27,26 @@ export interface TransactionItem {
     product?: Product
 }
 
+// ... types
+export interface User {
+    id: string
+    name: string
+    email: string
+    role: "ADMIN" | "MANAGER" | "CLERK"
+    createdAt?: Date
+    updatedAt?: Date
+}
+
 export interface Transaction {
     id: string
     type: "SALE" | "PURCHASE"
     date: Date
     total: number
     userId: string
+    user?: Partial<User> | null // Optional relation
     items: TransactionItem[]
 }
 
-// ... types
 export interface Adjustment {
     id: string
     productId: string
@@ -47,12 +57,54 @@ export interface Adjustment {
     product?: Product
 }
 
-export interface ActionState {
+export interface ActionState<T = unknown> {
     error?: string
-    success?: string
+    success?: boolean | string // Allow boolean true or string message
     issues?: {
         message: string
         path: (string | number)[]
     }[]
-    data?: unknown // Optional data return
+    data?: T
+}
+
+// Reports
+export interface LowStockReportItem {
+    id: string
+    sku: string
+    name: string
+    stockQty: number
+    minStock: number
+}
+
+export interface ValuationReport {
+    params: {
+        totalCost: number
+        totalRetail: number
+        itemCount: number
+    }
+    products: {
+        id: string
+        sku: string
+        name: string
+        stockQty: number
+        costPrice: number
+        salePrice: number
+    }[]
+}
+
+export interface SalesHistoryItem {
+    id: string
+    date: Date
+    total: number
+    user?: {
+        name: string | null
+        email: string | null
+    } | null
+    items: {
+        id: string
+        quantity: number
+        product: {
+            name: string
+        }
+    }[]
 }

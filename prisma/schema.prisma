@@ -16,6 +16,9 @@ model User {
   role      Role     @default(CLERK)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  transactions Transaction[]
+  adjustments  Adjustment[]
 }
 
 enum Role {
@@ -33,8 +36,8 @@ model Product {
   description String?
   imageUrl    String?
   barcode     String?  @unique
-  costPrice   Decimal
-  salePrice   Decimal
+  costPrice   Decimal  @db.Decimal(10, 2)
+  salePrice   Decimal  @db.Decimal(10, 2)
   stockQty    Int      @default(0)
   minStock    Int      @default(5) // Reorder threshold
   isArchived  Boolean  @default(false)
@@ -49,8 +52,9 @@ model Transaction {
   id        String          @id @default(cuid())
   type      TransactionType // SALE, PURCHASE
   date      DateTime        @default(now())
-  total     Decimal
+  total     Decimal         @db.Decimal(10, 2)
   userId    String
+  user      User            @relation(fields: [userId], references: [id])
   
   items     TransactionItem[]
 }
@@ -67,7 +71,7 @@ model TransactionItem {
   productId     String
   product       Product     @relation(fields: [productId], references: [id])
   quantity      Int
-  price         Decimal     // Price at moment of transaction
+  price         Decimal     @db.Decimal(10, 2) // Price at moment of transaction
 }
 
 model Adjustment {
@@ -75,6 +79,7 @@ model Adjustment {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   userId    String
+  user      User     @relation(fields: [userId], references: [id])
   reason    String
   qtyChange Int      // Positive or negative
   createdAt DateTime @default(now())

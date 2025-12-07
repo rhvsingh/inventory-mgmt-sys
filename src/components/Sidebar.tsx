@@ -18,10 +18,27 @@ const navItems = [
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
     onClose?: () => void
+    user: {
+        name?: string | null
+        email?: string | null
+        role?: string
+    }
 }
 
-export function Sidebar({ className, onClose }: SidebarProps) {
+export function Sidebar({ className, onClose, user }: SidebarProps) {
     const pathname = usePathname()
+
+    // Filter nav items based on role
+    const filteredNavItems = navItems.filter((item) => {
+        const role = user.role
+        if (item.href === "/users") {
+            return role === "ADMIN"
+        }
+        if (item.href === "/reports") {
+            return role === "ADMIN" || role === "MANAGER"
+        }
+        return true
+    })
 
     return (
         <div className={cn("flex h-full w-64 flex-col border-r bg-card text-card-foreground", className)}>
@@ -33,7 +50,7 @@ export function Sidebar({ className, onClose }: SidebarProps) {
             </div>
             <div className="flex-1 overflow-auto py-4">
                 <nav className="grid gap-1 px-2">
-                    {navItems.map((item) => {
+                    {filteredNavItems.map((item) => {
                         const isActive = pathname === item.href
                         return (
                             <Link
@@ -60,18 +77,29 @@ export function Sidebar({ className, onClose }: SidebarProps) {
                         <Users className="h-4 w-4" />
                     </div>
                     <div className="text-sm">
-                        <p className="font-medium">Admin</p>
-                        <p className="text-xs text-muted-foreground">admin@example.com</p>
+                        <p className="font-medium">{user.name || "User"}</p>
+                        <p className="text-xs text-muted-foreground">{user.email || ""}</p>
                     </div>
                 </div>
-                <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground hover:text-primary">
-                    <Settings className="h-4 w-4" />
-                    Settings
-                </Button>
+                <Link
+                    href="/settings"
+                    className={cn("flex items-center gap-3 rounded-lg", pathname === "/settings" ? "bg-muted" : "")}
+                >
+                    <Button
+                        variant="ghost"
+                        className={cn(
+                            "w-full justify-start gap-2 text-muted-foreground hover:text-primary cursor-pointer",
+                            pathname === "/settings" ? "text-primary" : ""
+                        )}
+                    >
+                        <Settings className="h-4 w-4" />
+                        Settings
+                    </Button>
+                </Link>
                 <form action={logout}>
                     <Button
                         variant="ghost"
-                        className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="w-full justify-start gap-2 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
                         type="submit"
                     >
                         <LogOut className="h-4 w-4" />
