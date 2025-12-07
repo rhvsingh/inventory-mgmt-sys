@@ -55,7 +55,17 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
     }
 
     const imageFile = formData.get("image") as File
-    const imageUrl = await uploadImage(imageFile)
+    let imageUrl: string | null = null
+
+    if (imageFile && imageFile.size > 0) {
+        if (imageFile.size > 5 * 1024 * 1024) {
+            return { error: "File size must be less than 5MB" }
+        }
+        if (!imageFile.type.startsWith("image/")) {
+            return { error: "File must be an image" }
+        }
+        imageUrl = await uploadImage(imageFile)
+    }
 
     // Convert empty strings to null for optional unique fields to avoid P2002
     const dataToCreate = {
@@ -122,6 +132,12 @@ export async function updateProduct(
     const imageFile = formData.get("image") as File
     let imageUrl: string | null | undefined
     if (imageFile && imageFile.size > 0) {
+        if (imageFile.size > 5 * 1024 * 1024) {
+            return { error: "File size must be less than 5MB" }
+        }
+        if (!imageFile.type.startsWith("image/")) {
+            return { error: "File must be an image" }
+        }
         imageUrl = await uploadImage(imageFile)
     }
 

@@ -90,7 +90,7 @@ export async function deleteUser(userId: string): Promise<ActionState> {
         })
         revalidateTag("users", "hours")
         return { success: true }
-    } catch (e) {
+    } catch {
         return { error: "Failed to delete user" }
     }
 }
@@ -120,7 +120,7 @@ export async function updateProfile(prevState: ActionState | null, formData: For
 
         revalidateTag("users", "hours") // Update users list if name changed
         return { success: true }
-    } catch (e) {
+    } catch {
         return { error: "Failed to update profile" }
     }
 }

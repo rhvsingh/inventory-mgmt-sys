@@ -348,8 +348,18 @@ export function ProductForm({ initialData, action, title, description, submitLab
                                     type="file"
                                     name="image"
                                     className="hidden"
-                                    accept="image/*"
-                                    onChange={handleChange}
+                                    accept="image/png, image/jpeg, image/webp"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0]
+                                        if (file) {
+                                            if (file.size > 5 * 1024 * 1024) {
+                                                alert("File is too large. Max size is 5MB.")
+                                                e.target.value = "" // Reset
+                                                return
+                                            }
+                                            setSelectedFile(file)
+                                        }
+                                    }}
                                 />
                             </div>
                         </CardContent>

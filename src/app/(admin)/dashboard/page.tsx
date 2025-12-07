@@ -69,7 +69,7 @@ export default async function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-            <div className={`grid gap-4 md:grid-cols-2 lg:grid-cols-${canSeeFinancials ? "7" : "1"}`}>
+            <div className={`grid gap-4 ${canSeeFinancials ? "md:grid-cols-2 lg:grid-cols-7" : "grid-cols-1"}`}>
                 {canSeeFinancials && (
                     <Card className="col-span-4">
                         <CardHeader>

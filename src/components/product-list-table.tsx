@@ -155,6 +155,7 @@ export function ProductListTable({ products, metadata, role }: ProductListTableP
                                                         alt={product.name}
                                                         fill
                                                         className="object-cover"
+                                                        unoptimized
                                                     />
                                                 </div>
                                             ) : (
