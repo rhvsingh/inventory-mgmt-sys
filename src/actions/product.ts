@@ -1,14 +1,14 @@
 "use server"
 
-import { Prisma } from "@prisma/client"
-import { revalidatePath, revalidateTag } from "next/cache"
+import type { Prisma } from "@prisma/client"
+import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
+import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { serializePrisma } from "@/lib/prisma-utils"
-import { uploadImage, deleteImage } from "@/lib/upload"
+import { deleteImage, uploadImage } from "@/lib/upload"
 import type { ActionState, Product } from "@/types"
-import { cacheTag, cacheLife } from "next/cache"
 
 const productSchema = z.object({
     sku: z.string().min(1, "SKU is required"),
@@ -21,8 +21,6 @@ const productSchema = z.object({
     minStock: z.coerce.number().int().min(0).default(5),
     barcode: z.string().optional(),
 })
-
-import { auth } from "@/auth"
 
 export async function createProduct(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
     const session = await auth()

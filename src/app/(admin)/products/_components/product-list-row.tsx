@@ -1,9 +1,7 @@
-"use client"
-
-import { memo } from "react"
 import Image from "next/image"
-import { TableCell, TableRow } from "@/components/ui/table"
+import { memo } from "react"
 import { ProductActions } from "@/components/product-actions"
+import { TableCell, TableRow } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
 import type { Product } from "@/types"
 

@@ -1,6 +1,6 @@
 import { getSalesHistory } from "@/actions/reports"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { OverviewChart } from "@/components/overview-chart"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export async function OverviewChartCard({ role }: { role?: string }) {
     const canSeeFinancials = role === "ADMIN" || role === "MANAGER"

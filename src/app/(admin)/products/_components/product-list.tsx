@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useCallback, useOptimistic } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useCallback, useOptimistic, useState } from "react"
 import { Pagination } from "@/components/pagination"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { Product } from "@/types"
-import { ProductListRow } from "./product-list-row"
-import { productColumns } from "./product-columns"
 import { ColumnToggle } from "./column-toggle"
+import { productColumns } from "./product-columns"
+import { ProductListRow } from "./product-list-row"
 
 interface ProductListProps {
     products: Product[]

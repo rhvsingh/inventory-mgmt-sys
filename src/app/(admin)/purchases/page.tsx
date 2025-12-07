@@ -1,12 +1,10 @@
-import { format } from "date-fns"
 import { Plus } from "lucide-react"
 import Link from "next/link"
-import { getTransactions } from "@/actions/transaction"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { formatCurrency } from "@/lib/utils"
 
+import { getTransactions } from "@/actions/transaction"
 import { auth } from "@/auth"
+import { Button } from "@/components/ui/button"
+import { PurchaseList } from "./_components/purchase-list"
 
 export default async function PurchasesPage() {
     const session = await auth()
@@ -29,47 +27,7 @@ export default async function PurchasesPage() {
                 )}
             </div>
 
-            <div className="rounded-md border bg-card">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>ID</TableHead>
-                            <TableHead>Items</TableHead>
-                            <TableHead className="text-right">Total Cost</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {purchases.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
-                                    No purchases recorded.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            purchases.map((purchase) => (
-                                <TableRow key={purchase.id}>
-                                    <TableCell>{format(purchase.date, "MMM d, yyyy")}</TableCell>
-                                    <TableCell className="font-mono text-xs">{purchase.id.slice(-8)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col gap-1">
-                                            {purchase.items.map((item) => (
-                                                <span key={item.id} className="text-sm text-muted-foreground">
-                                                    {item.product?.name || "Unknown Product"} x {item.quantity} (
-                                                    {formatCurrency(Number(item.product?.costPrice))} )
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        {formatCurrency(Number(purchase.total))}
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+            <PurchaseList purchases={purchases} />
         </div>
     )
 }
