@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useOptimistic } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pagination } from "@/components/pagination"
 import type { Product } from "@/types"
@@ -20,6 +20,10 @@ interface ProductListProps {
 
 export function ProductList({ products, metadata, role }: ProductListProps) {
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(productColumns.map((c) => c.id)))
+
+    const [optimisticProducts, removeOptimisticProduct] = useOptimistic(products, (state, idToRemove: string) =>
+        state.filter((p) => p.id !== idToRemove)
+    )
 
     const toggleColumn = useCallback((column: string) => {
         setVisibleColumns((prev) => {
@@ -56,19 +60,20 @@ export function ProductList({ products, metadata, role }: ProductListProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {products.length === 0 ? (
+                        {optimisticProducts.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={visibleColumns.size} className="h-24 text-center">
                                     No products found.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            products.map((product) => (
+                            optimisticProducts.map((product) => (
                                 <ProductListRow
                                     key={product.id}
                                     product={product}
                                     visibleColumns={visibleColumns}
                                     role={role}
+                                    onDelete={() => removeOptimisticProduct(product.id)}
                                 />
                             ))
                         )}

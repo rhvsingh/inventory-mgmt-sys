@@ -175,7 +175,7 @@ export async function archiveProduct(id: string) {
     const session = await auth()
     const role = session?.user?.role
     if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
-        throw new Error("Unauthorized")
+        return { error: "Unauthorized" }
     }
     try {
         await prisma.product.update({
@@ -185,9 +185,69 @@ export async function archiveProduct(id: string) {
         revalidateTag("products", "minutes")
         revalidateTag("reports", "minutes")
         revalidatePath("/products")
+        return { success: true }
     } catch (error) {
         console.error("Failed to archive product:", error)
-        throw new Error("Failed to archive product")
+        return { error: "Failed to archive product" }
+    }
+}
+
+export async function unarchiveProduct(id: string) {
+    const session = await auth()
+    const role = session?.user?.role
+    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+        return { error: "Unauthorized" }
+    }
+    try {
+        await prisma.product.update({
+            where: { id },
+            data: { isArchived: false },
+        })
+        revalidateTag("products", "minutes")
+        revalidateTag("reports", "minutes")
+        revalidatePath("/products")
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to unarchive product:", error)
+        return { error: "Failed to unarchive product" }
+    }
+}
+
+export async function deleteProduct(id: string) {
+    const session = await auth()
+    const role = session?.user?.role
+    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+        return { error: "Unauthorized" }
+    }
+
+    // Check for dependencies
+    const dependencyCount = await prisma.transactionItem.count({
+        where: { productId: id },
+    })
+
+    if (dependencyCount > 0) {
+        return { error: "Cannot delete product with existing sales or purchases. Please archive it instead." }
+    }
+
+    const adjustmentCount = await prisma.adjustment.count({
+        where: { productId: id },
+    })
+
+    if (adjustmentCount > 0) {
+        return { error: "Cannot delete product with inventory adjustments. Please archive it instead." }
+    }
+
+    try {
+        await prisma.product.delete({
+            where: { id },
+        })
+        revalidateTag("products", "minutes")
+        revalidateTag("reports", "minutes")
+        revalidatePath("/products")
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to delete product:", error)
+        return { error: "Failed to delete product" }
     }
 }
 

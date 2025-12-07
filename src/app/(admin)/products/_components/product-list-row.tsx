@@ -11,10 +11,11 @@ interface ProductListRowProps {
     product: Product
     visibleColumns: Set<string>
     role?: string
+    onDelete: () => void
 }
 
 export const ProductListRow = memo(
-    function ProductListRow({ product, visibleColumns, role }: ProductListRowProps) {
+    function ProductListRow({ product, visibleColumns, role, onDelete }: ProductListRowProps) {
         return (
             <TableRow>
                 {visibleColumns.has("image") && (
@@ -49,7 +50,12 @@ export const ProductListRow = memo(
                 {visibleColumns.has("stockQty") && <TableCell className="text-right">{product.stockQty}</TableCell>}
                 {visibleColumns.has("actions") && (
                     <TableCell className="text-right">
-                        <ProductActions productId={product.id} role={role} />
+                        <ProductActions
+                            productId={product.id}
+                            role={role}
+                            onDelete={onDelete}
+                            isArchived={product.isArchived}
+                        />
                     </TableCell>
                 )}
             </TableRow>
