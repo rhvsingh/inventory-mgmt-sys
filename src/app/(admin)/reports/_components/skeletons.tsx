@@ -20,24 +20,3 @@ export function ReportCardsSkeleton() {
         </div>
     )
 }
-
-export function TableSkeleton() {
-    return (
-        <div className="rounded-md border">
-            <div className="p-4">
-                <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 w-24" />
-                    </div>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Static list
-                        <div key={i} className="flex items-center gap-4">
-                            <Skeleton className="h-12 w-full" />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    )
-}

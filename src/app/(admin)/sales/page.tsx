@@ -2,9 +2,9 @@ import { Plus } from "lucide-react"
 import Link from "next/link"
 import { Suspense } from "react"
 
+import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { Button } from "@/components/ui/button"
 import { SaleListWrapper } from "./_components/sale-list-wrapper"
-import { SalesTableSkeleton } from "./_components/skeletons"
 
 interface SalesPageProps {
     searchParams: Promise<{ page?: string }>
@@ -26,7 +26,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
                 </Link>
             </div>
 
-            <Suspense key={page} fallback={<SalesTableSkeleton />}>
+            <Suspense key={page} fallback={<DataTableSkeleton columnCount={4} />}>
                 <SaleListWrapper page={page} />
             </Suspense>
         </div>

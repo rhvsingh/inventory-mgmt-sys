@@ -3,9 +3,9 @@ import Link from "next/link"
 import { Suspense } from "react"
 
 import { auth } from "@/auth"
+import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { Button } from "@/components/ui/button"
 import { PurchaseListWrapper } from "./_components/purchase-list-wrapper"
-import { PurchasesTableSkeleton } from "./_components/skeletons"
 
 interface PurchasesPageProps {
     searchParams: Promise<{ page?: string }>
@@ -33,7 +33,7 @@ export default async function PurchasesPage({ searchParams }: PurchasesPageProps
                 )}
             </div>
 
-            <Suspense key={page} fallback={<PurchasesTableSkeleton />}>
+            <Suspense key={page} fallback={<DataTableSkeleton columnCount={4} />}>
                 <PurchaseListWrapper page={page} />
             </Suspense>
         </div>

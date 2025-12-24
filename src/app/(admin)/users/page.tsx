@@ -3,7 +3,7 @@ import { Suspense } from "react"
 
 import { auth } from "@/auth"
 import { CreateUserDialog } from "@/components/create-user-dialog"
-import { UsersTableSkeleton } from "./_components/skeletons"
+import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { UserListWrapper } from "./_components/user-list-wrapper"
 
 interface UsersPageProps {
@@ -25,7 +25,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                 <h1 className="text-3xl font-bold tracking-tight">Users</h1>
                 <CreateUserDialog />
             </div>
-            <Suspense key={page} fallback={<UsersTableSkeleton />}>
+            <Suspense key={page} fallback={<DataTableSkeleton columnCount={5} />}>
                 <UserListWrapper page={page} />
             </Suspense>
         </div>

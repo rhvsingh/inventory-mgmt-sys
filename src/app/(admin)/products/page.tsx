@@ -5,12 +5,13 @@ import { Suspense } from "react"
 
 import type { ProductFilters as ProductFiltersType } from "@/actions/product"
 import { auth } from "@/auth"
+import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { SearchInput } from "@/components/search-input"
 import { Button } from "@/components/ui/button"
 
 import { FilterWrapper } from "./_components/filter-wrapper"
 import { ProductListWrapper } from "./_components/product-list-wrapper"
-import { FilterSkeleton, ProductTableSkeleton } from "./_components/skeletons"
+import { FilterSkeleton } from "./_components/skeletons"
 
 export default async function ProductsPage({
     searchParams,
@@ -77,7 +78,10 @@ export default async function ProductsPage({
                 </Suspense>
             </div>
 
-            <Suspense key={JSON.stringify({ q, currentPage, filters })} fallback={<ProductTableSkeleton />}>
+            <Suspense
+                key={JSON.stringify({ q, currentPage, filters })}
+                fallback={<DataTableSkeleton columnCount={6} rowCount={10} />}
+            >
                 <ProductListWrapper query={q} page={currentPage} filters={filters} role={role} />
             </Suspense>
         </div>
