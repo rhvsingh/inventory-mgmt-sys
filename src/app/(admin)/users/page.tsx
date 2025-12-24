@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation"
-import { getUsers } from "@/actions/user"
+import { Suspense } from "react"
+
 import { auth } from "@/auth"
 import { CreateUserDialog } from "@/components/create-user-dialog"
-import { UserList } from "./_components/user-list"
+import { UsersTableSkeleton } from "./_components/skeletons"
+import { UserListWrapper } from "./_components/user-list-wrapper"
 
 interface UsersPageProps {
     searchParams: Promise<{ page?: string }>
@@ -16,7 +18,6 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
 
     const params = await searchParams
     const page = Number(params.page) || 1
-    const { data: users, metadata } = await getUsers(page)
 
     return (
         <div className="flex flex-col gap-6">
@@ -24,7 +25,9 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                 <h1 className="text-3xl font-bold tracking-tight">Users</h1>
                 <CreateUserDialog />
             </div>
-            <UserList users={users} metadata={metadata} />
+            <Suspense key={page} fallback={<UsersTableSkeleton />}>
+                <UserListWrapper page={page} />
+            </Suspense>
         </div>
     )
 }

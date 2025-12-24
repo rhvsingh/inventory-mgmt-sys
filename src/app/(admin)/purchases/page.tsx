@@ -1,10 +1,11 @@
 import { Plus } from "lucide-react"
 import Link from "next/link"
+import { Suspense } from "react"
 
-import { getTransactions } from "@/actions/transaction"
 import { auth } from "@/auth"
 import { Button } from "@/components/ui/button"
-import { PurchaseList } from "./_components/purchase-list"
+import { PurchaseListWrapper } from "./_components/purchase-list-wrapper"
+import { PurchasesTableSkeleton } from "./_components/skeletons"
 
 interface PurchasesPageProps {
     searchParams: Promise<{ page?: string }>
@@ -17,7 +18,6 @@ export default async function PurchasesPage({ searchParams }: PurchasesPageProps
 
     const params = await searchParams
     const page = Number(params.page) || 1
-    const { data: purchases, metadata } = await getTransactions("PURCHASE", page)
 
     return (
         <div className="flex flex-col gap-6">
@@ -33,7 +33,9 @@ export default async function PurchasesPage({ searchParams }: PurchasesPageProps
                 )}
             </div>
 
-            <PurchaseList purchases={purchases} metadata={metadata} />
+            <Suspense key={page} fallback={<PurchasesTableSkeleton />}>
+                <PurchaseListWrapper page={page} />
+            </Suspense>
         </div>
     )
 }

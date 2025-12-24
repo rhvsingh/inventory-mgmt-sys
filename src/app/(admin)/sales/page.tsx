@@ -1,8 +1,10 @@
 import { Plus } from "lucide-react"
 import Link from "next/link"
-import { getTransactions } from "@/actions/transaction"
+import { Suspense } from "react"
+
 import { Button } from "@/components/ui/button"
-import { SaleList } from "./_components/sale-list"
+import { SaleListWrapper } from "./_components/sale-list-wrapper"
+import { SalesTableSkeleton } from "./_components/skeletons"
 
 interface SalesPageProps {
     searchParams: Promise<{ page?: string }>
@@ -11,7 +13,6 @@ interface SalesPageProps {
 export default async function SalesPage({ searchParams }: SalesPageProps) {
     const params = await searchParams
     const page = Number(params.page) || 1
-    const { data: sales, metadata } = await getTransactions("SALE", page)
 
     return (
         <div className="flex flex-col gap-6">
@@ -25,7 +26,9 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
                 </Link>
             </div>
 
-            <SaleList sales={sales} metadata={metadata} />
+            <Suspense key={page} fallback={<SalesTableSkeleton />}>
+                <SaleListWrapper page={page} />
+            </Suspense>
         </div>
     )
 }
