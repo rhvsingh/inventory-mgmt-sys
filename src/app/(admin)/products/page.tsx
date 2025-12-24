@@ -1,12 +1,16 @@
-import { Plus, FileDown } from "lucide-react"
+import { FileDown, Plus } from "lucide-react"
 import Link from "next/link"
-import { getDistinctValues, getProductsPaginated, type ProductFilters as ProductFiltersType } from "@/actions/product"
-import { Button } from "@/components/ui/button"
-import { SearchInput } from "@/components/search-input"
-import { ProductFilters } from "@/components/product-filters"
-import { ProductList } from "./_components/product-list"
-import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import { Suspense } from "react"
+
+import type { ProductFilters as ProductFiltersType } from "@/actions/product"
+import { auth } from "@/auth"
+import { SearchInput } from "@/components/search-input"
+import { Button } from "@/components/ui/button"
+
+import { FilterWrapper } from "./_components/filter-wrapper"
+import { ProductListWrapper } from "./_components/product-list-wrapper"
+import { FilterSkeleton, ProductTableSkeleton } from "./_components/skeletons"
 
 export default async function ProductsPage({
     searchParams,
@@ -39,11 +43,6 @@ export default async function ProductsPage({
         isArchived: archived === "true",
     }
 
-    const [{ products, metadata }, distinctValues] = await Promise.all([
-        getProductsPaginated(q, currentPage, 10, filters),
-        getDistinctValues(),
-    ])
-
     const role = session.user.role || "CLERK"
     const canManage_Products = role === "ADMIN" || role === "MANAGER"
 
@@ -73,10 +72,14 @@ export default async function ProductsPage({
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <SearchInput />
-                <ProductFilters categories={distinctValues.categories} brands={distinctValues.brands} />
+                <Suspense fallback={<FilterSkeleton />}>
+                    <FilterWrapper />
+                </Suspense>
             </div>
 
-            <ProductList products={products} metadata={metadata} role={role} />
+            <Suspense key={JSON.stringify({ q, currentPage, filters })} fallback={<ProductTableSkeleton />}>
+                <ProductListWrapper query={q} page={currentPage} filters={filters} role={role} />
+            </Suspense>
         </div>
     )
 }
