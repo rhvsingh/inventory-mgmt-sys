@@ -1,15 +1,15 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { cacheTag, cacheLife } from "next/cache"
 
 const transactionItemSchema = z.object({
     productId: z.string(),
     quantity: z.coerce.number().int().positive(),
     price: z.coerce.number().min(0),
+    discount: z.coerce.number().min(0).default(0),
 })
 
 const transactionSchema = z.object({
@@ -22,7 +22,7 @@ import { auth } from "@/auth"
 
 export async function createTransaction(data: {
     type: "SALE" | "PURCHASE"
-    items: { productId: string; quantity: number; price: number }[]
+    items: { productId: string; quantity: number; price: number; discount?: number }[]
 }) {
     const session = await auth()
     if (!session?.user?.id) {
@@ -43,7 +43,8 @@ export async function createTransaction(data: {
     }
 
     const { type, items } = validatedData.data
-    const total = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
+    // Calculate total: (qty * price) - discount
+    const total = items.reduce((sum, item) => sum + (item.quantity * item.price - item.discount), 0)
 
     // Attribute to the actual user
     const userId = session.user.id
@@ -61,6 +62,7 @@ export async function createTransaction(data: {
                             productId: item.productId,
                             quantity: item.quantity,
                             price: item.price,
+                            discount: item.discount,
                         })),
                     },
                 },

@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, ScanBarcode, Trash2 } from "lucide-react"
+import { ArrowLeft, ScanBarcode } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { getProducts } from "@/actions/product"
@@ -14,7 +14,9 @@ import type { Product } from "@/types"
 
 export default function NewSalePage() {
     const [products, setProducts] = useState<Product[]>([])
-    const [items, setItems] = useState<{ productId: string; quantity: number; price: number; name: string }[]>([])
+    const [items, setItems] = useState<
+        { productId: string; quantity: number; price: number; name: string; discount: number }[]
+    >([])
     const [loading, setLoading] = useState(false)
     const [barcodeInput, setBarcodeInput] = useState("")
     const barcodeInputRef = useRef<HTMLInputElement>(null)
@@ -57,6 +59,7 @@ export default function NewSalePage() {
                     quantity: 1,
                     price: Number(product.salePrice),
                     name: product.name,
+                    discount: 0,
                 },
             ])
         }
@@ -73,6 +76,13 @@ export default function NewSalePage() {
         setItems(newItems)
     }
 
+    const updateDiscount = (index: number, discount: number) => {
+        if (discount < 0) return
+        const newItems = [...items]
+        newItems[index].discount = discount
+        setItems(newItems)
+    }
+
     const handleSubmit = async () => {
         if (items.length === 0) return
         setLoading(true)
@@ -82,11 +92,12 @@ export default function NewSalePage() {
                 productId: i.productId,
                 quantity: Number(i.quantity),
                 price: Number(i.price),
+                discount: Number(i.discount),
             })),
         })
     }
 
-    const total = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
+    const total = items.reduce((sum, item) => sum + (item.quantity * item.price - item.discount), 0)
 
     return (
         <div className="flex flex-col gap-6 max-w-4xl mx-auto">
@@ -173,9 +184,17 @@ export default function NewSalePage() {
                                                 size="icon"
                                                 className="h-8 w-8 text-destructive cursor-pointer"
                                                 onClick={() => handleRemoveItem(index)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            ></Button>
+                                        </div>
+                                        <div className="w-full mt-2 flex items-center justify-end gap-2">
+                                            <span className="text-xs text-muted-foreground">Disc:</span>
+                                            <Input
+                                                type="number"
+                                                className="h-6 w-16 px-1 text-center text-xs"
+                                                placeholder="0"
+                                                value={item.discount > 0 ? item.discount : ""}
+                                                onChange={(e) => updateDiscount(index, Number(e.target.value))}
+                                            />
                                         </div>
                                     </div>
                                 ))

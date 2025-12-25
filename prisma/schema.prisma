@@ -80,6 +80,7 @@ model TransactionItem {
   product       Product     @relation(fields: [productId], references: [id])
   quantity      Int
   price         Decimal     @db.Decimal(10, 2) // Price at moment of transaction
+  discount      Decimal     @default(0) @db.Decimal(10, 2)
 
   @@index([transactionId])
   @@index([productId])

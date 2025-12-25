@@ -49,7 +49,7 @@ export function UserList({ users, metadata }: UserListProps) {
                                         </TableCell>
                                         <TableCell>{user.createdAt ? formatDate(user.createdAt) : "N/A"}</TableCell>
                                         <TableCell>
-                                            <UserActions userId={user.id} />
+                                            <UserActions userId={user.id} userName={user.name} />
                                         </TableCell>
                                     </TableRow>
                                 ))}

@@ -1,50 +1,71 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { toast } from "sonner"
+import { updateProfile } from "@/actions/user-settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { updateProfile } from "@/actions/user"
-import { useFormStatus } from "react-dom"
-import { toast } from "sonner"
-import type { User } from "next-auth"
 
-function SubmitButton() {
-    const { pending } = useFormStatus()
-    return (
-        <Button type="submit" disabled={pending} className="cursor-pointer">
-            {pending ? "Saving..." : "Save Changes"}
-        </Button>
-    )
+interface ProfileFormProps {
+    user: {
+        name?: string | null
+        email?: string | null
+        role?: string
+    }
 }
 
-export function ProfileForm({ user }: { user: User }) {
-    async function clientAction(formData: FormData) {
-        const res = await updateProfile(null, formData)
+export function ProfileForm({ user }: ProfileFormProps) {
+    const router = useRouter()
+    const [name, setName] = useState(user.name || "")
+    const [email, setEmail] = useState(user.email || "")
+    const [loading, setLoading] = useState(false)
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+
+        const res = await updateProfile({ name, email })
+
         if (res?.error) {
             toast.error(res.error)
         } else {
-            toast.success("Profile updated")
+            toast.success("Profile updated successfully")
+            router.refresh()
         }
+        setLoading(false)
     }
 
     return (
-        <form action={clientAction} className="space-y-4">
-            <input type="hidden" name="id" value={user.id} />
-            <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" name="name" defaultValue={user.name || ""} required />
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input
+                        id="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Your Name"
+                        required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="name@example.com"
+                        required
+                    />
+                </div>
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" name="email" type="email" defaultValue={user.email || ""} required />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Input id="role" value={user.role || ""} disabled className="bg-muted" />
-                <p className="text-[0.8rem] text-muted-foreground">Role cannot be changed.</p>
-            </div>
-            <div className="pt-2">
-                <SubmitButton />
+            <div className="flex justify-start">
+                <Button type="submit" disabled={loading}>
+                    {loading ? "Saving..." : "Save Changes"}
+                </Button>
             </div>
         </form>
     )
