@@ -24,12 +24,20 @@ export default async function PurchasesPage({ searchParams }: PurchasesPageProps
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">Purchases</h1>
                 {canManage && (
-                    <Link href="/purchases/new">
-                        <Button className="gap-2 cursor-pointer">
-                            <Plus className="h-4 w-4" />
-                            Record Purchase
-                        </Button>
-                    </Link>
+                    <div className="flex gap-2">
+                        <Link href="/purchases/bulk">
+                            <Button variant="outline" className="gap-2 cursor-pointer">
+                                <Plus className="h-4 w-4" />
+                                Bulk Restock
+                            </Button>
+                        </Link>
+                        <Link href="/purchases/new">
+                            <Button className="gap-2 cursor-pointer">
+                                <Plus className="h-4 w-4" />
+                                Record Purchase
+                            </Button>
+                        </Link>
+                    </div>
                 )}
             </div>
 

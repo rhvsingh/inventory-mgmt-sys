@@ -39,6 +39,7 @@ export const ProductListRow = memo(
                 {visibleColumns.has("name") && <TableCell>{product.name}</TableCell>}
                 {visibleColumns.has("brand") && <TableCell>{product.brand || "-"}</TableCell>}
                 {visibleColumns.has("category") && <TableCell>{product.category || "-"}</TableCell>}
+                {visibleColumns.has("supplier") && <TableCell>{product.supplier?.name || "-"}</TableCell>}
                 {visibleColumns.has("costPrice") && (
                     <TableCell className="text-right">{formatCurrency(Number(product.costPrice))}</TableCell>
                 )}

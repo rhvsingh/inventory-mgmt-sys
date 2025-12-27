@@ -1,5 +1,10 @@
 "use client"
 
+import { PlusCircle } from "lucide-react"
+import { useState } from "react"
+import { useFormStatus } from "react-dom"
+import { toast } from "sonner"
+import { createUser } from "@/actions/user"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -13,11 +18,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createUser } from "@/actions/user"
-import { useFormStatus } from "react-dom"
-import { useState } from "react"
-import { toast } from "sonner"
-import { PlusCircle } from "lucide-react"
 
 function SubmitButton() {
     const { pending } = useFormStatus()
@@ -36,7 +36,9 @@ export function CreateUserDialog() {
         if (res?.error) {
             toast.error(res.error)
             if (res.issues) {
-                res.issues.forEach((i) => toast.error(i.message))
+                res.issues.forEach((i) => {
+                    toast.error(i.message)
+                })
             }
         } else {
             toast.success("User created successfully")

@@ -1,7 +1,7 @@
 "use client"
 
-import React from "react"
 import Image from "next/image"
+import type React from "react"
 import { ProductActions } from "@/components/product-actions"
 import { formatCurrency } from "@/lib/utils"
 import type { Product } from "@/types"
@@ -49,6 +49,11 @@ export const productColumns: ColumnDef[] = [
         id: "category",
         label: "Category",
         render: (product) => product.category || "-",
+    },
+    {
+        id: "supplier",
+        label: "Supplier",
+        render: (product) => product.supplier?.name || "-",
     },
     {
         id: "costPrice",

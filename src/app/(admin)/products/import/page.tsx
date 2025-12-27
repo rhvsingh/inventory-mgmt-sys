@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import Papa from "papaparse"
-import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, ArrowLeft, Loader2 } from "lucide-react"
+import { AlertCircle, ArrowLeft, CheckCircle, FileSpreadsheet, Loader2, Upload } from "lucide-react"
 import Link from "next/link"
+import Papa from "papaparse"
+import { useState } from "react"
+import { type ImportResult, importProducts } from "@/actions/import"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { importProducts, type ImportResult } from "@/actions/import"
 import { cn } from "@/lib/utils"
 
 export default function ImportProductsPage() {
@@ -120,12 +120,22 @@ export default function ImportProductsPage() {
                     </div>
 
                     {!result && (
+                        // biome-ignore lint/a11y/useSemanticElements: Custom drag drop area requires div
                         <div
                             className={cn(
-                                "flex flex-col items-center justify-center gap-4 rounded-md border-2 border-dashed p-10 transition-colors",
+                                "flex flex-col items-center justify-center gap-4 rounded-md border-2 border-dashed p-10 transition-colors w-full cursor-pointer",
                                 isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25",
                                 "hover:bg-muted/50"
                             )}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => document.getElementById("file-upload")?.click()}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault()
+                                    document.getElementById("file-upload")?.click()
+                                }
+                            }}
                             onDragEnter={handleDrag}
                             onDragLeave={handleDrag}
                             onDragOver={handleDrag}
@@ -135,11 +145,16 @@ export default function ImportProductsPage() {
                             <div className="text-center">
                                 <p className="text-sm font-medium">
                                     Drag and drop your CSV file here, or{" "}
-                                    <label className="text-primary hover:underline cursor-pointer">
-                                        browse
-                                        <input type="file" className="hidden" accept=".csv" onChange={handleChange} />
-                                    </label>
+                                    <span className="text-primary hover:underline">browse</span>
                                 </p>
+                                <input
+                                    id="file-upload"
+                                    type="file"
+                                    className="hidden"
+                                    accept=".csv"
+                                    onChange={handleChange}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
                                 <p className="text-xs text-muted-foreground mt-1">Max file size: 5MB</p>
                             </div>
                             {file && (

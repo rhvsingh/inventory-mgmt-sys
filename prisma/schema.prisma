@@ -47,9 +47,27 @@ model Product {
   transactionItems TransactionItem[]
   adjustments      Adjustment[]
 
+  supplierId  String?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+
   @@index([name])
   @@index([brand])
   @@index([category])
+  @@index([supplierId])
+}
+
+model Supplier {
+  id            String   @id @default(cuid())
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  products Product[]
+  transactions Transaction[]
 }
 
 model Transaction {
@@ -62,9 +80,29 @@ model Transaction {
   
   items     TransactionItem[]
 
+  customerId String?
+  customer  Customer?       @relation(fields: [customerId], references: [id])
+  
+  supplierId String?
+  supplier   Supplier?      @relation(fields: [supplierId], references: [id])
+
   @@index([userId])
   @@index([type])
   @@index([date])
+  @@index([customerId])
+  @@index([supplierId])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?  @unique
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  transactions Transaction[]
 }
 
 enum TransactionType {

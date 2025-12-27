@@ -3,24 +3,12 @@
 import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
-import { z } from "zod"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { serializePrisma } from "@/lib/prisma-utils"
+import { productSchema } from "@/lib/schemas"
 import { deleteImage, uploadImage } from "@/lib/upload"
 import type { ActionState, Product } from "@/types"
-
-const productSchema = z.object({
-    sku: z.string().min(1, "SKU is required"),
-    name: z.string().min(1, "Name is required"),
-    brand: z.string().optional(),
-    category: z.string().optional(),
-    costPrice: z.coerce.number().min(0),
-    salePrice: z.coerce.number().min(0),
-    stockQty: z.coerce.number().int().min(0),
-    minStock: z.coerce.number().int().min(0).default(5),
-    barcode: z.string().optional(),
-})
 
 export async function createProduct(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
     const session = await auth()
@@ -38,6 +26,7 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
         stockQty: formData.get("stockQty"),
         minStock: formData.get("minStock"),
         barcode: formData.get("barcode"),
+        supplierId: formData.get("supplierId"),
     }
 
     const validatedData = productSchema.safeParse(rawData)
@@ -72,6 +61,7 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
         barcode: validatedData.data.barcode || null,
         brand: validatedData.data.brand || null,
         category: validatedData.data.category || null,
+        supplierId: validatedData.data.supplierId === "none" ? null : validatedData.data.supplierId || null,
     }
 
     try {
@@ -119,6 +109,7 @@ export async function updateProduct(
         stockQty: formData.get("stockQty"),
         minStock: formData.get("minStock"),
         barcode: formData.get("barcode"),
+        supplierId: formData.get("supplierId"),
     }
 
     const validatedData = productSchema.safeParse(rawData)
@@ -152,6 +143,7 @@ export async function updateProduct(
         barcode: validatedData.data.barcode || null,
         brand: validatedData.data.brand || null,
         category: validatedData.data.category || null,
+        supplierId: validatedData.data.supplierId === "none" ? null : validatedData.data.supplierId || null,
     }
 
     try {
@@ -271,26 +263,38 @@ export async function deleteProduct(id: string) {
     }
 }
 
-export async function getProducts(query?: string): Promise<Product[]> {
+export async function getProducts(options?: { query?: string; supplierId?: string }): Promise<Product[]> {
     "use cache"
-    cacheTag("products")
+    // Create a cache key based on options
+    const queryKey = options?.query ? `query-${options.query}` : "no-query"
+    const supplierKey = options?.supplierId ? `supplier-${options.supplierId}` : "no-supplier"
+    cacheTag("products", queryKey, supplierKey)
     cacheLife("minutes")
 
     const products = await prisma.product.findMany({
         where: {
             isArchived: false,
-            ...(query
+            ...(options?.query
                 ? {
                       OR: [
-                          { name: { contains: query, mode: "insensitive" } },
-                          { sku: { contains: query, mode: "insensitive" } },
-                          { brand: { contains: query, mode: "insensitive" } },
-                          { category: { contains: query, mode: "insensitive" } },
+                          { name: { contains: options.query, mode: "insensitive" } },
+                          { sku: { contains: options.query, mode: "insensitive" } },
+                          { brand: { contains: options.query, mode: "insensitive" } },
+                          { category: { contains: options.query, mode: "insensitive" } },
                       ],
                   }
                 : {}),
+            ...(options?.supplierId ? { supplierId: options.supplierId } : {}),
         },
         orderBy: { createdAt: "desc" },
+        include: {
+            supplier: {
+                select: {
+                    id: true,
+                    name: true,
+                },
+            },
+        },
     })
     return serializePrisma(products)
 }
@@ -359,6 +363,14 @@ export async function getProductsPaginated(
             orderBy: { createdAt: "desc" },
             skip,
             take: limit,
+            include: {
+                supplier: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
         }),
         prisma.product.count({ where }),
     ])

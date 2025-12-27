@@ -1,6 +1,6 @@
+import { auth } from "@/auth"
 import { Header } from "@/components/Header"
 import { Sidebar } from "@/components/Sidebar"
-import { auth } from "@/auth"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
     const session = await auth()

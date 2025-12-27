@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import type { ActionState, Product } from "@/types"
+import type { Supplier } from "@prisma/client"
 
 interface ProductFormProps {
     initialData?: Product
@@ -18,9 +20,18 @@ interface ProductFormProps {
     description: string
     submitLabel: string
     isModal?: boolean
+    suppliers?: Supplier[]
 }
 
-export function ProductForm({ initialData, action, title, description, submitLabel, isModal }: ProductFormProps) {
+export function ProductForm({
+    initialData,
+    action,
+    title,
+    description,
+    submitLabel,
+    isModal,
+    suppliers = [],
+}: ProductFormProps) {
     const [state, formAction, isPending] = useActionState<ActionState | null, FormData>(action, null)
     const [dragActive, setDragActive] = useState(false)
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -124,25 +135,43 @@ export function ProductForm({ initialData, action, title, description, submitLab
                             </div>
                         </div>
 
-                        <div className="grid gap-2">
-                            <div className="flex items-center gap-2">
-                                <Label htmlFor="name">Product Name</Label>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>The full display name of the product.</p>
-                                    </TooltipContent>
-                                </Tooltip>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="name">Product Name</Label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>The full display name of the product.</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                                <Input
+                                    id="name"
+                                    name="name"
+                                    placeholder="Nike Air Zoom..."
+                                    defaultValue={initialData?.name}
+                                    required
+                                />
                             </div>
-                            <Input
-                                id="name"
-                                name="name"
-                                placeholder="Nike Air Zoom..."
-                                defaultValue={initialData?.name}
-                                required
-                            />
+                            <div className="grid gap-2">
+                                <Label htmlFor="supplierId">Supplier</Label>
+                                <Select name="supplierId" defaultValue={initialData?.supplierId || "none"}>
+                                    <SelectTrigger className="w-full bg-background dark:bg-background">
+                                        <SelectValue placeholder="Select a supplier" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">None</SelectItem>
+                                        {suppliers.map((supplier) => (
+                                            <SelectItem key={supplier.id} value={supplier.id}>
+                                                {supplier.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -1,10 +1,13 @@
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { createProduct } from "@/actions/product"
+import { getAllSuppliers } from "@/actions/supplier"
 import { ProductForm } from "@/components/product-form"
 import { Button } from "@/components/ui/button"
 
-export default function NewProductPage() {
+export default async function NewProductPage() {
+    const suppliers = await getAllSuppliers()
+
     return (
         <section className="flex flex-col gap-6 max-w-2xl mx-auto">
             <div className="flex items-center gap-2">
@@ -20,6 +23,7 @@ export default function NewProductPage() {
                 title="Add New Product"
                 description="Enter the details for the new product."
                 submitLabel="Create Product"
+                suppliers={suppliers}
             />
         </section>
     )

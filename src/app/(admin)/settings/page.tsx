@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/auth"
 import { ChangePasswordDialog } from "@/components/change-password-dialog"
+import { NotificationSettings } from "@/components/notification-settings"
 import { ProfileForm } from "@/components/profile-form"
 import { ThemeSelector } from "@/components/theme-selector"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -53,7 +54,7 @@ export default async function SettingsPage() {
                                     <h3 className="text-lg font-medium">Password</h3>
                                     <p className="text-sm text-muted-foreground">Update your password securely.</p>
                                 </div>
-                                <ChangePasswordDialog userId={user.id!} userName={user.name!} />
+                                <ChangePasswordDialog userId={user.id || ""} userName={user.name || ""} />
                             </section>
                         </CardContent>
                     </Card>
@@ -70,6 +71,18 @@ export default async function SettingsPage() {
                             <ThemeSelector />
                         </CardContent>
                     </Card>
+
+                    {(user.role === "ADMIN" || user.role === "MANAGER") && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Notifications</CardTitle>
+                                <CardDescription>Customize the notifications polling interval.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <NotificationSettings />
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>

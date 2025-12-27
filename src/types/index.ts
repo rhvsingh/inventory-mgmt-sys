@@ -16,6 +16,11 @@ export interface Product {
     isArchived: boolean
     createdAt: Date
     updatedAt: Date
+    supplierId: string | null
+    supplier?: {
+        id: string
+        name: string
+    } | null
 }
 
 export interface TransactionItem {
@@ -43,8 +48,33 @@ export interface Transaction {
     date: Date
     total: number
     userId: string
-    user?: Partial<User> | null // Optional relation
+    user?: Partial<User> | null
     items: TransactionItem[]
+    customerId?: string | null
+    customer?: Customer | null
+    supplierId?: string | null
+    supplier?: { id: string; name: string } | null
+}
+
+export interface Customer {
+    id: string
+    name: string
+    email: string | null
+    phone: string | null
+    address: string | null
+    createdAt: Date
+    updatedAt: Date
+}
+
+export interface Supplier {
+    id: string
+    name: string
+    contactPerson: string | null
+    email: string | null
+    phone: string | null
+    address: string | null
+    createdAt: Date
+    updatedAt: Date
 }
 
 export interface Adjustment {

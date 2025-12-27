@@ -1,9 +1,9 @@
 "use client"
 
 import { BarChart3, LayoutDashboard, LogOut, Package, Settings, ShoppingCart, Truck, Users } from "lucide-react"
-import { logout } from "@/actions/auth"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { logout } from "@/actions/auth"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -12,8 +12,10 @@ const navItems = [
     { href: "/products", icon: Package, label: "Products" },
     { href: "/sales", icon: ShoppingCart, label: "Sales" },
     { href: "/purchases", icon: Truck, label: "Purchases" },
-    { href: "/reports", icon: BarChart3, label: "Reports" },
+    { href: "/suppliers", icon: Users, label: "Suppliers" },
+    { href: "/customers", icon: Users, label: "Customers" },
     { href: "/users", icon: Users, label: "Users" }, // Admin only usually
+    { href: "/reports", icon: BarChart3, label: "Reports" },
 ]
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -42,7 +44,7 @@ export function Sidebar({ className, onClose, user }: SidebarProps) {
 
     return (
         <div className={cn("flex h-full w-64 flex-col border-r bg-card text-card-foreground", className)}>
-            <div className="flex h-14 lg:h-[60px] items-center border-b px-4">
+            <div className="flex h-14 lg:h-15 items-center border-b px-4">
                 <Link href="/" className="flex items-center gap-2 font-semibold" onClick={onClose}>
                     <Package className="h-6 w-6" />
                     <span>Sports Shop IMS</span>

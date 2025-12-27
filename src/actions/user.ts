@@ -1,7 +1,6 @@
 "use server"
 
-import { Role } from "@prisma/client"
-import type { User } from "@prisma/client"
+import { Role, type User } from "@prisma/client"
 import bcrypt from "bcryptjs"
 import { cacheLife, cacheTag, revalidateTag } from "next/cache"
 import { z } from "zod"
@@ -51,7 +50,7 @@ const userSchema = z.object({
     role: z.nativeEnum(Role).default(Role.CLERK),
 })
 
-export async function createUser(prevState: ActionState | null, formData: FormData): Promise<ActionState> {
+export async function createUser(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
     const session = await auth()
     if (!session || session.user.role !== "ADMIN") {
         return { error: "Unauthorized" }
@@ -112,7 +111,7 @@ export async function deleteUser(userId: string): Promise<ActionState> {
     }
 }
 
-export async function updateProfile(prevState: ActionState | null, formData: FormData): Promise<ActionState> {
+export async function updateProfile(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
     const rawData = {
         name: formData.get("name"),
         email: formData.get("email"),

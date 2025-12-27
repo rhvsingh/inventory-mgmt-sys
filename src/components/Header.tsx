@@ -49,7 +49,7 @@ export function Header({
             {/* Actions */}
             <div className="flex items-center gap-2">
                 <ModeToggle />
-                <NotificationBell />
+                <NotificationBell role={user.role} />
             </div>
         </header>
     )

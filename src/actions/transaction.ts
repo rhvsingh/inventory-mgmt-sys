@@ -1,27 +1,17 @@
 "use server"
 
+import { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
-import { redirect } from "next/navigation"
-import { z } from "zod"
-import { prisma } from "@/lib/prisma"
-
-const transactionItemSchema = z.object({
-    productId: z.string(),
-    quantity: z.coerce.number().int().positive(),
-    price: z.coerce.number().min(0),
-    discount: z.coerce.number().min(0).default(0),
-})
-
-const transactionSchema = z.object({
-    type: z.enum(["SALE", "PURCHASE"]),
-    items: z.array(transactionItemSchema).min(1),
-    userId: z.string().optional(), // In real app, get from session
-})
-
 import { auth } from "@/auth"
+import { prisma } from "@/lib/prisma"
+import { serializePrisma } from "@/lib/prisma-utils"
+import { transactionSchema } from "@/lib/schemas"
+import type { Transaction } from "@/types"
 
 export async function createTransaction(data: {
     type: "SALE" | "PURCHASE"
+    customerId?: string
+    supplierId?: string
     items: { productId: string; quantity: number; price: number; discount?: number }[]
 }) {
     const session = await auth()
@@ -52,20 +42,28 @@ export async function createTransaction(data: {
     try {
         await prisma.$transaction(async (tx) => {
             // 1. Create Transaction
-            await tx.transaction.create({
-                data: {
-                    type,
-                    total,
-                    userId,
-                    items: {
-                        create: items.map((item) => ({
-                            productId: item.productId,
-                            quantity: item.quantity,
-                            price: item.price,
-                            discount: item.discount,
-                        })),
-                    },
+            const transactionData: Prisma.TransactionCreateInput = {
+                type,
+                total: new Prisma.Decimal(total),
+                user: { connect: { id: userId } },
+                customer: validatedData.data.customerId
+                    ? { connect: { id: validatedData.data.customerId } }
+                    : undefined,
+                supplier: validatedData.data.supplierId
+                    ? { connect: { id: validatedData.data.supplierId } }
+                    : undefined,
+                items: {
+                    create: items.map((item) => ({
+                        product: { connect: { id: item.productId } },
+                        quantity: item.quantity,
+                        price: new Prisma.Decimal(item.price),
+                        discount: new Prisma.Decimal(item.discount || 0),
+                    })),
                 },
+            }
+
+            await tx.transaction.create({
+                data: transactionData,
             })
 
             // 2. Update Product Stock
@@ -96,42 +94,79 @@ export async function createTransaction(data: {
     revalidatePath("/purchases")
     revalidatePath("/sales")
 
-    if (type === "PURCHASE") redirect("/purchases")
-    if (type === "SALE") redirect("/sales")
+    // If we redirect here, the client component's try/catch block will catch the NEXT_REDIRECT error
+    // and treat it as a failure. Instead, we return success and let the client handle navigation.
+    return { success: true }
 }
 
-import { serializePrisma } from "@/lib/prisma-utils"
-import type { Transaction } from "@/types"
-
-// ... (createTransaction function)
-
 export async function getTransactions(
-    type: "SALE" | "PURCHASE",
+    type?: "SALE" | "PURCHASE",
     page: number = 1,
-    limit: number = 50
+    limit: number = 50,
+    search?: string,
+    customerId?: string,
+    supplierId?: string
 ): Promise<{ data: Transaction[]; metadata: { total: number; page: number; totalPages: number } }> {
     "use cache"
-    cacheTag("transactions", type.toLowerCase(), `page-${page}`)
+    cacheTag(
+        "transactions",
+        type ? type.toLowerCase() : "all",
+        `page-${page}`,
+        search ? `search-${search}` : "no-search",
+        customerId ? `customer-${customerId}` : "no-customer",
+        supplierId ? `supplier-${supplierId}` : "no-supplier"
+    )
     cacheLife("minutes")
 
     const skip = (page - 1) * limit
 
+    const where: Prisma.TransactionWhereInput = {
+        ...(type ? { type } : {}),
+        ...(customerId ? { customerId } : {}),
+        ...(supplierId ? { supplierId } : {}),
+        ...(search
+            ? {
+                  OR: [
+                      {
+                          customer: {
+                              name: { contains: search, mode: "insensitive" },
+                          },
+                      },
+                      {
+                          items: {
+                              some: {
+                                  product: {
+                                      name: { contains: search, mode: "insensitive" },
+                                  },
+                              },
+                          },
+                      },
+                      {
+                          id: { contains: search, mode: "insensitive" },
+                      },
+                  ],
+              }
+            : {}),
+    }
+
     const [transactions, total] = await Promise.all([
         prisma.transaction.findMany({
-            where: { type },
+            where,
             include: {
                 items: {
                     include: {
                         product: true,
                     },
                 },
+                customer: true,
+                supplier: true,
             },
             orderBy: { date: "desc" },
             skip,
             take: limit,
         }),
         prisma.transaction.count({
-            where: { type },
+            where,
         }),
     ])
 

@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button"
 import { SaleListWrapper } from "./_components/sale-list-wrapper"
 
 interface SalesPageProps {
-    searchParams: Promise<{ page?: string }>
+    searchParams: Promise<{ page?: string; search?: string }>
 }
 
 export default async function SalesPage({ searchParams }: SalesPageProps) {
     const params = await searchParams
     const page = Number(params.page) || 1
+    const search = params.search || ""
 
     return (
         <div className="flex flex-col gap-6">
@@ -26,8 +27,8 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
                 </Link>
             </div>
 
-            <Suspense key={page} fallback={<DataTableSkeleton columnCount={4} />}>
-                <SaleListWrapper page={page} />
+            <Suspense key={`${page}-${search}`} fallback={<DataTableSkeleton columnCount={5} />}>
+                <SaleListWrapper page={page} search={search} />
             </Suspense>
         </div>
     )

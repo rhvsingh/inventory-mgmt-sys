@@ -2,8 +2,11 @@
 
 import { ArrowLeft, Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
+import { toast } from "sonner"
 import { getProducts } from "@/actions/product"
+import { getAllSuppliers } from "@/actions/supplier"
 import { createTransaction } from "@/actions/transaction"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -88,15 +91,46 @@ function ProductSelect({ products, value, onChange }: ProductSelectProps) {
     )
 }
 
-export default function NewPurchasePage() {
+function NewPurchaseContent() {
     const [products, setProducts] = useState<Product[]>([])
+    const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([])
     // Initialize with one empty item containing a unique ID
     const [items, setItems] = useState<PurchaseItem[]>([{ id: "init-1", productId: "", quantity: 1, price: 0 }])
     const [loading, setLoading] = useState(false)
+    const [selectedSupplierId, setSelectedSupplierId] = useState<string>("")
+
+    const searchParams = useSearchParams()
+    const router = useRouter()
 
     useEffect(() => {
-        getProducts().then((data) => setProducts(data))
-    }, [])
+        const loadData = async () => {
+            const [productsData, suppliersData] = await Promise.all([getProducts(), getAllSuppliers()])
+            setProducts(productsData)
+            setSuppliers(suppliersData)
+
+            const urlProductId = searchParams.get("productId")
+            const urlSupplierId = searchParams.get("supplierId")
+
+            if (urlSupplierId) {
+                setSelectedSupplierId(urlSupplierId)
+            }
+
+            if (urlProductId) {
+                const product = productsData.find((p) => p.id === urlProductId)
+                if (product) {
+                    setItems([
+                        {
+                            id: crypto.randomUUID(),
+                            productId: urlProductId,
+                            quantity: 1, // Default to minStock or reorderQty logic if existed, 1 for now
+                            price: Number(product.costPrice),
+                        },
+                    ])
+                }
+            }
+        }
+        loadData()
+    }, [searchParams])
 
     const handleAddItem = () => {
         setItems([...items, { id: crypto.randomUUID(), productId: "", quantity: 1, price: 0 }])
@@ -133,14 +167,29 @@ export default function NewPurchasePage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
-        await createTransaction({
-            type: "PURCHASE",
-            items: items.map((i) => ({
-                productId: i.productId,
-                quantity: Number(i.quantity),
-                price: Number(i.price),
-            })),
-        })
+        try {
+            const res = await createTransaction({
+                type: "PURCHASE",
+                supplierId: selectedSupplierId || undefined,
+                items: items.map((i) => ({
+                    productId: i.productId,
+                    quantity: Number(i.quantity),
+                    price: Number(i.price),
+                })),
+            })
+
+            if (res?.error) {
+                toast.error(res.error)
+                setLoading(false)
+            } else {
+                toast.success("Purchase recorded!")
+                router.push("/purchases")
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error("Failed to record purchase")
+            setLoading(false)
+        }
     }
 
     const total = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
@@ -164,6 +213,60 @@ export default function NewPurchasePage() {
                     </CardHeader>
                     <CardContent className="flex flex-col gap-6">
                         <div className="flex flex-col gap-4">
+                            <div className="grid gap-2">
+                                <Label>Supplier (Optional)</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                "w-full justify-between",
+                                                !selectedSupplierId && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {selectedSupplierId
+                                                ? suppliers.find((s) => s.id === selectedSupplierId)?.name
+                                                : "Select supplier"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[300px] p-0" align="start">
+                                        <Command>
+                                            <CommandInput placeholder="Search supplier..." />
+                                            <CommandList>
+                                                <CommandEmpty>No supplier found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {suppliers.map((supplier) => (
+                                                        <CommandItem
+                                                            value={supplier.name}
+                                                            key={supplier.id}
+                                                            onSelect={() => {
+                                                                setSelectedSupplierId(
+                                                                    supplier.id === selectedSupplierId
+                                                                        ? ""
+                                                                        : supplier.id
+                                                                )
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    supplier.id === selectedSupplierId
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {supplier.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
                             <div className="flex items-center justify-between">
                                 <Label>Items</Label>
                                 <Button
@@ -247,5 +350,13 @@ export default function NewPurchasePage() {
                 </Card>
             </form>
         </div>
+    )
+}
+
+export default function NewPurchasePage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <NewPurchaseContent />
+        </Suspense>
     )
 }
