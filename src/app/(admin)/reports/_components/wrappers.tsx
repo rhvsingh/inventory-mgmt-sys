@@ -183,3 +183,50 @@ export async function ValuationTableWrapper() {
     const { products: allProducts } = await getInventoryValuation()
     return <ValuationTable products={allProducts} />
 }
+
+export async function SalesSummaryWrapper() {
+    const summary = await getProfitLossReport()
+
+    const stats = [
+        { label: "Total Revenue", value: formatCurrency(summary.totalRevenue), icon: "currency" as const },
+        { label: "Gross Profit", value: formatCurrency(summary.grossProfit), icon: "trending" as const },
+        { label: "Transactions", value: summary.transactionCount, icon: "cart" as const },
+        {
+            label: "Avg Transaction",
+            value: formatCurrency(summary.transactionCount > 0 ? summary.totalRevenue / summary.transactionCount : 0),
+            icon: "currency" as const,
+        },
+    ]
+
+    return <SummaryStatsCard stats={stats} />
+}
+
+export async function ValuationSummaryWrapper() {
+    const { params } = await getInventoryValuation()
+
+    const stats = [
+        { label: "Total Asset Cost", value: formatCurrency(params.totalCost), icon: "currency" as const },
+        { label: "Total Retail Value", value: formatCurrency(params.totalRetail), icon: "trending" as const },
+        { label: "Total Items", value: params.itemCount, icon: "cart" as const },
+        {
+            label: "Potential Margin",
+            value: formatCurrency(params.totalRetail - params.totalCost),
+            icon: "currency" as const,
+        },
+    ]
+
+    return <SummaryStatsCard stats={stats} />
+}
+
+export async function LowStockSummaryWrapper() {
+    const products = await getLowStockReport()
+
+    const outOfStockCount = products.filter((p) => p.stockQty <= 0).length
+
+    const stats = [
+        { label: "Low Stock Items", value: products.length, icon: "cart" as const },
+        { label: "Out of Stock", value: outOfStockCount, icon: "trending" as const },
+    ]
+
+    return <SummaryStatsCard stats={stats} />
+}

@@ -10,12 +10,18 @@ import { RefreshButton } from "./_components/refresh-button"
 import { ReportCardsSkeleton } from "./_components/skeletons"
 import {
     CustomerStatsWrapper,
+    CustomerSummaryWrapper,
+    LowStockSummaryWrapper,
     LowStockTableWrapper,
     OverviewWrapper,
     PurchaseHistoryTableWrapper,
+    PurchaseSummaryWrapper,
     ReportCardsWrapper,
     SalesHistoryTableWrapper,
+    SalesSummaryWrapper,
     SupplierStatsWrapper,
+    SupplierSummaryWrapper,
+    ValuationSummaryWrapper,
     ValuationTableWrapper,
 } from "./_components/wrappers"
 
@@ -74,36 +80,54 @@ export default async function ReportsPage() {
                 </TabsContent>
 
                 <TabsContent value="sales" className="space-y-4">
+                    <Suspense fallback={<ReportCardsSkeleton />}>
+                        <SalesSummaryWrapper />
+                    </Suspense>
                     <Suspense fallback={<DataTableSkeleton columnCount={4} />}>
                         <SalesHistoryTableWrapper />
                     </Suspense>
                 </TabsContent>
 
                 <TabsContent value="purchases" className="space-y-4">
+                    <Suspense fallback={<ReportCardsSkeleton />}>
+                        <PurchaseSummaryWrapper />
+                    </Suspense>
                     <Suspense fallback={<DataTableSkeleton columnCount={5} />}>
                         <PurchaseHistoryTableWrapper />
                     </Suspense>
                 </TabsContent>
 
                 <TabsContent value="suppliers" className="space-y-4">
+                    <Suspense fallback={<ReportCardsSkeleton />}>
+                        <SupplierSummaryWrapper />
+                    </Suspense>
                     <Suspense fallback={<DataTableSkeleton columnCount={3} />}>
                         <SupplierStatsWrapper />
                     </Suspense>
                 </TabsContent>
 
                 <TabsContent value="customers" className="space-y-4">
+                    <Suspense fallback={<ReportCardsSkeleton />}>
+                        <CustomerSummaryWrapper />
+                    </Suspense>
                     <Suspense fallback={<DataTableSkeleton columnCount={3} />}>
                         <CustomerStatsWrapper />
                     </Suspense>
                 </TabsContent>
 
                 <TabsContent value="valuation" className="space-y-4">
+                    <Suspense fallback={<ReportCardsSkeleton />}>
+                        <ValuationSummaryWrapper />
+                    </Suspense>
                     <Suspense fallback={<DataTableSkeleton columnCount={6} />}>
                         <ValuationTableWrapper />
                     </Suspense>
                 </TabsContent>
 
                 <TabsContent value="low-stock" className="space-y-4">
+                    <Suspense fallback={<ReportCardsSkeleton />}>
+                        <LowStockSummaryWrapper />
+                    </Suspense>
                     <Suspense fallback={<DataTableSkeleton columnCount={5} />}>
                         <LowStockTableWrapper />
                     </Suspense>
