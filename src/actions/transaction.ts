@@ -66,19 +66,60 @@ export async function createTransaction(data: {
                 data: transactionData,
             })
 
-            // 2. Update Product Stock
+            // 2. Update Product Stock and Cost (WAC for Purchases)
             for (const item of items) {
                 const qtyChange = type === "PURCHASE" ? item.quantity : -item.quantity
 
-                await tx.product.update({
-                    where: { id: item.productId },
-                    data: {
-                        stockQty: {
-                            increment: qtyChange,
+                if (type === "PURCHASE") {
+                    const currentProduct = await tx.product.findUnique({
+                        where: { id: item.productId },
+                        select: { stockQty: true, costPrice: true },
+                    })
+
+                    if (currentProduct) {
+                        const currentStock = currentProduct.stockQty
+                        const currentCost = Number(currentProduct.costPrice)
+                        const newStock = item.quantity
+                        // Effective unit cost considering line discount
+                        const totalLineCost = item.quantity * item.price - (item.discount || 0)
+                        const unitCost = totalLineCost / item.quantity
+
+                        let newCostPrice = currentCost
+                        const finalStock = currentStock + newStock
+
+                        // Weighted Average Cost Calculation
+                        if (currentStock <= 0) {
+                            // If we had no stock (or negative), the new cost is just the incoming cost
+                            newCostPrice = unitCost
+                        } else {
+                            // (Old Value + New Value) / Total Qty
+                            const totalValue = currentStock * currentCost + totalLineCost
+                            newCostPrice = totalValue / finalStock
+                        }
+
+                        await tx.product.update({
+                            where: { id: item.productId },
+                            data: {
+                                stockQty: { increment: qtyChange },
+                                costPrice: newCostPrice,
+                            },
+                        })
+                    } else {
+                        // Fallback if product not found (shouldn't happen due to FK)
+                        await tx.product.update({
+                            where: { id: item.productId },
+                            data: { stockQty: { increment: qtyChange } },
+                        })
+                    }
+                } else {
+                    // Sale: Just update stock
+                    await tx.product.update({
+                        where: { id: item.productId },
+                        data: {
+                            stockQty: { increment: qtyChange },
                         },
-                    },
-                })
-                // Invalidate individual product cache if needed, but 'products' tag covers list
+                    })
+                }
             }
         })
     } catch (error) {
