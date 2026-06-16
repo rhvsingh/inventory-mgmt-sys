@@ -3,7 +3,9 @@ import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
 import { auth } from "@/auth"
+
 import { InventoryCards } from "./_components/inventory-cards"
+import { LowStockCard } from "./_components/low-stock-card"
 import { OverviewChartCard } from "./_components/overview-chart-card"
 import { RecentSalesCard } from "./_components/recent-sales-card"
 import { SalesVolumeCard } from "./_components/sales-volume-card"
@@ -50,6 +52,9 @@ export default async function DashboardPage() {
                 </Suspense>
                 <Suspense fallback={<RecentSalesSkeleton />}>
                     <RecentSalesCard />
+                </Suspense>
+                <Suspense fallback={<RecentSalesSkeleton />}>
+                    <LowStockCard permissions={permissions} />
                 </Suspense>
             </div>
         </div>

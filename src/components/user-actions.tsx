@@ -1,6 +1,7 @@
 "use client"
 
 import { MoreHorizontal, Trash2 } from "lucide-react"
+import dynamic from "next/dynamic"
 import { toast } from "sonner"
 
 import { deleteUser } from "@/actions/user"
@@ -25,8 +26,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import type { User } from "@/types"
 
-import { ChangePasswordDialog } from "./change-password-dialog"
-import { EditUserDialog } from "./edit-user-dialog"
+const EditUserDialog = dynamic(() => import("./edit-user-dialog").then((m) => m.EditUserDialog), { ssr: false })
+const ChangePasswordDialog = dynamic(() => import("./change-password-dialog").then((m) => m.ChangePasswordDialog), {
+    ssr: false,
+})
 
 export function UserActions({ user, roles }: { user: User; roles: { id: string; name: string }[] }) {
     async function handleDelete() {

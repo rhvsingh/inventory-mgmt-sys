@@ -1,13 +1,14 @@
 "use client"
 
 import { ArrowLeft, IndianRupee, Percent, Plus, ScanBarcode, Trash, User } from "lucide-react"
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
+
 import { getCustomers } from "@/actions/customer"
 import { getProducts } from "@/actions/product"
 import { createTransaction } from "@/actions/transaction"
-import { CustomerForm } from "@/app/(admin)/customers/_components/customer-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
@@ -18,6 +19,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn, formatCurrency } from "@/lib/utils"
 import type { Product } from "@/types"
+
+const CustomerForm = dynamic(
+    () => import("@/app/(admin)/customers/_components/customer-form").then((m) => m.CustomerForm),
+    { ssr: false },
+)
 
 export default function NewSalePage() {
     const [products, setProducts] = useState<Product[]>([])
@@ -147,11 +153,17 @@ export default function NewSalePage() {
         if (items.length === 0) return
         setLoading(true)
 
+        const originalItems = items
+        const originalCustomer = selectedCustomer
+
+        setItems([])
+        setSelectedCustomer(null)
+
         try {
             const res = await createTransaction({
                 type: "SALE",
-                customerId: selectedCustomer?.id,
-                items: items.map((i) => ({
+                customerId: originalCustomer?.id,
+                items: originalItems.map((i) => ({
                     productId: i.productId,
                     quantity: Number(i.quantity),
                     price: Number(i.price),
@@ -161,14 +173,16 @@ export default function NewSalePage() {
 
             if (res?.error) {
                 toast.error(res.error)
+                setItems(originalItems)
+                setSelectedCustomer(originalCustomer)
             } else {
                 toast.success("Sale completed!")
-                setItems([])
-                setSelectedCustomer(null)
             }
         } catch (error) {
             console.error(error)
             toast.error("Failed to complete sale")
+            setItems(originalItems)
+            setSelectedCustomer(originalCustomer)
         } finally {
             setLoading(false)
         }
