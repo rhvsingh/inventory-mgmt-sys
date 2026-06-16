@@ -7,13 +7,13 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { exportToCSV } from "@/lib/export"
 
-interface ExportButtonProps {
+interface ExportButtonProps<T extends object> {
     filename: string
-    fetchData: () => Promise<any[]>
+    fetchData: () => Promise<T[]>
     label?: string
 }
 
-export function ExportButton({ filename, fetchData, label = "Export CSV" }: ExportButtonProps) {
+export function ExportButton<T extends object>({ filename, fetchData, label = "Export CSV" }: ExportButtonProps<T>) {
     const [exporting, setExporting] = useState(false)
 
     const handleExport = async () => {
@@ -27,16 +27,16 @@ export function ExportButton({ filename, fetchData, label = "Export CSV" }: Expo
 
             // Sanitize database objects (remove complex relations or flatten them)
             const sanitized = data.map((item) => {
-                const flat: any = {}
+                const flat: Record<string, unknown> = {}
                 for (const key of Object.keys(item)) {
-                    const val = item[key]
+                    const val = (item as Record<string, unknown>)[key]
                     if (val === null || val === undefined) {
                         flat[key] = ""
                     } else if (typeof val === "object") {
                         if (val instanceof Date) {
                             flat[key] = val.toISOString()
-                        } else if (val.name) {
-                            flat[key] = val.name // extract name for nested relations (like user.name, supplier.name, customer.name)
+                        } else if ("name" in val && val.name) {
+                            flat[key] = String((val as { name: unknown }).name)
                         } else {
                             flat[key] = JSON.stringify(val)
                         }
