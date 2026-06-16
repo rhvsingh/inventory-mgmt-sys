@@ -21,14 +21,35 @@ interface ReportsPageProps {
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     const session = await auth()
-    const role = session?.user?.role
+    if (!session?.user) {
+        redirect("/dashboard")
+    }
 
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    const permissions = session.user.permissions || []
+    const hasLowStock = permissions.includes("reports:low_stock")
+    const hasValuation = permissions.includes("reports:valuation")
+    const hasHistory = permissions.includes("reports:history")
+
+    const allowedTabs = [
+        { value: "overview", label: "Overview", allowed: hasHistory },
+        { value: "sales", label: "Sales", allowed: hasHistory },
+        { value: "purchases", label: "Purchases", allowed: hasHistory },
+        { value: "suppliers", label: "Suppliers", allowed: hasHistory },
+        { value: "customers", label: "Customers", allowed: hasHistory },
+        { value: "valuation", label: "Valuation", allowed: hasValuation },
+        { value: "low-stock", label: "Low Stock", allowed: hasLowStock },
+    ].filter((t) => t.allowed)
+
+    if (allowedTabs.length === 0) {
         redirect("/dashboard")
     }
 
     const resolvedParams = await searchParams
-    const activeTab = (resolvedParams.tab as string) || "overview"
+    const activeTab = (resolvedParams.tab as string) || allowedTabs[0].value
+
+    if (!allowedTabs.some((t) => t.value === activeTab)) {
+        redirect(`/reports?tab=${allowedTabs[0].value}`)
+    }
 
     let tabContent = null
 
@@ -129,15 +150,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
             break
         }
         default: {
-            // Fallback to overview or empty if invalid tab
-            const { OverviewWrapper } = await import("./_components/tabs/overview")
-            tabContent = (
-                <TabsContent value="overview" className="space-y-4">
-                    <Suspense fallback={<ReportCardsSkeleton />}>
-                        <OverviewWrapper />
-                    </Suspense>
-                </TabsContent>
-            )
+            // Fallback to first allowed tab
+            redirect(`/reports?tab=${allowedTabs[0].value}`)
         }
     }
 
@@ -152,29 +166,13 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                 <ReportCardsWrapper />
             </Suspense>
 
-            <ReportTabs defaultValue="overview">
+            <ReportTabs defaultValue={allowedTabs[0].value}>
                 <TabsList className="flex-wrap h-auto">
-                    <TabsTrigger className="cursor-pointer" value="overview">
-                        Overview
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="sales">
-                        Sales
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="purchases">
-                        Purchases
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="suppliers">
-                        Suppliers
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="customers">
-                        Customers
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="valuation">
-                        Valuation
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="low-stock">
-                        Low Stock
-                    </TabsTrigger>
+                    {allowedTabs.map((tab) => (
+                        <TabsTrigger key={tab.value} className="cursor-pointer" value={tab.value}>
+                            {tab.label}
+                        </TabsTrigger>
+                    ))}
                 </TabsList>
 
                 {tabContent}
