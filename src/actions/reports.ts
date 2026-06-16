@@ -2,10 +2,11 @@
 
 import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidateTag } from "next/cache"
+
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { Authz } from "@/lib/access"
-import type { Action } from "@/lib/access/types"
+import type { Action, AuthUser } from "@/lib/access/types"
 import type {
     CustomerStats,
     EntitySummary,
@@ -23,7 +24,7 @@ async function checkReportPermission(action: Action) {
     if (!session?.user) {
         throw new Error("Unauthorized")
     }
-    const authCheck = Authz.check(session.user as any, action)
+    const authCheck = Authz.check(session.user as AuthUser, action)
     if (!authCheck.authorized) {
         throw new Error(authCheck.reason || "Unauthorized")
     }
@@ -98,7 +99,7 @@ async function getInventoryValuationCached(): Promise<ValuationReport> {
                 itemCount: acc.itemCount + qty,
             }
         },
-        { totalCost: 0, totalRetail: 0, itemCount: 0 }
+        { totalCost: 0, totalRetail: 0, itemCount: 0 },
     )
 
     return {
@@ -297,7 +298,7 @@ export async function refreshReportData() {
     // Any report permission can refresh
     const permissions = session.user.permissions || []
     const canRefresh = permissions.some((p) =>
-        ["reports:read_low_stock", "reports:read_valuation", "reports:read_history"].includes(p)
+        ["reports:read_low_stock", "reports:read_valuation", "reports:read_history"].includes(p),
     )
     if (!canRefresh) {
         throw new Error("Forbidden")
