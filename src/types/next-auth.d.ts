@@ -1,5 +1,6 @@
-import type { Role } from "@prisma/client"
 import type { DefaultSession } from "next-auth"
+// biome-ignore lint/correctness/noUnusedImports: required for TypeScript module augmentation merging
+import type { JWT } from "next-auth/jwt"
 
 declare module "next-auth" {
     /**
@@ -8,24 +9,26 @@ declare module "next-auth" {
     interface Session {
         user: {
             id: string
-            role: Role
+            role: string
+            permissions: string[]
         } & DefaultSession["user"]
     }
 
     interface User {
-        role: Role
+        roleId: string
     }
 }
 
 declare module "next-auth/jwt" {
     /** Returned by the `jwt` callback and `getToken`, when using JWT sessions */
     interface JWT {
-        role: Role
+        role: string
+        permissions: string[]
     }
 }
 
 declare module "@auth/core/adapters" {
     interface AdapterUser {
-        role: Role
+        roleId: string
     }
 }

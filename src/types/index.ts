@@ -33,14 +33,35 @@ export interface TransactionItem {
     product?: Product
 }
 
-// ... types
+export interface PermissionDB {
+    id: string
+    name: string
+    description: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+}
+
+export interface RoleDB {
+    id: string
+    name: string
+    description: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    permissions: {
+        permission: PermissionDB
+    }[]
+    _count?: {
+        users: number
+    }
+}
+
 export interface User {
     id: string
     name: string
     email: string
-    role: "ADMIN" | "MANAGER" | "CLERK"
-    createdAt?: Date
-    updatedAt?: Date
+    role: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
 }
 
 export interface Transaction {

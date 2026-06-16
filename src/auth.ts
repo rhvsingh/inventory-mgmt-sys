@@ -19,6 +19,29 @@ async function getUser(email: string) {
     }
 }
 
+async function getUserWithPermissions(email: string) {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email },
+            include: {
+                role: {
+                    include: {
+                        permissions: {
+                            include: {
+                                permission: true,
+                            },
+                        },
+                    },
+                },
+            },
+        })
+        return user
+    } catch (error) {
+        console.error("Failed to fetch user with permissions:", error)
+        throw new Error("Failed to fetch user with permissions.")
+    }
+}
+
 import type { Adapter } from "next-auth/adapters"
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
@@ -52,15 +75,17 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         async session({ session, token }) {
             if (token.sub && session.user) {
                 session.user.id = token.sub
-                session.user.role = token.role as Role
+                session.user.role = token.role as string
+                session.user.permissions = (token.permissions as string[]) || []
             }
             return session
         },
         async jwt({ token }) {
             if (!token.role && token.email) {
-                const user = await getUser(token.email)
-                if (user) {
-                    token.role = user.role
+                const user = await getUserWithPermissions(token.email)
+                if (user?.role) {
+                    token.role = user.role.name
+                    token.permissions = user.role.permissions.map((p) => p.permission.name)
                 }
             }
             return token
