@@ -1,70 +1,76 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client
 // We use the SERVICE_ROLE_KEY for server-side uploads to bypass RLS policies
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const bucketName = process.env.SUPABASE_BUCKET || "products"
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey =
+	process.env.SUPABASE_SERVICE_ROLE_KEY ||
+	process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const bucketName = process.env.SUPABASE_BUCKET || "products";
 
 if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Missing Supabase environment variables")
+	throw new Error("Missing Supabase environment variables");
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function uploadImage(file: File): Promise<string | null> {
-    if (!file || file.size === 0) return null
+	if (!file || file.size === 0) return null;
 
-    try {
-        const fileExt = file.name.split(".").pop()
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-        const filePath = `${fileName}`
+	try {
+		const fileExt = file.name.split(".").pop();
+		const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+		const filePath = `${fileName}`;
 
-        const { error } = await supabase.storage.from(bucketName).upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-        })
+		const { error } = await supabase.storage
+			.from(bucketName)
+			.upload(filePath, file, {
+				cacheControl: "3600",
+				upsert: false,
+			});
 
-        if (error) {
-            console.error("Supabase storage error:", error)
-            return null
-        }
+		if (error) {
+			console.error("Supabase storage error:", error);
+			return null;
+		}
 
-        // Get public URL
-        const {
-            data: { publicUrl },
-        } = supabase.storage.from(bucketName).getPublicUrl(filePath)
+		// Get public URL
+		const {
+			data: { publicUrl },
+		} = supabase.storage.from(bucketName).getPublicUrl(filePath);
 
-        return publicUrl
-    } catch (error) {
-        console.error("Error uploading file:", error)
-        return null
-    }
+		return publicUrl;
+	} catch (error) {
+		console.error("Error uploading file:", error);
+		return null;
+	}
 }
 
 export async function deleteImage(imageUrl: string): Promise<boolean> {
-    if (!imageUrl) return false
+	if (!imageUrl) return false;
 
-    try {
-        // Extract file path from URL
-        // URL format: .../storage/v1/object/public/bucketName/fileName
-        const urlParts = imageUrl.split(`/${bucketName}/`)
-        if (urlParts.length < 2) {
-            console.error("Invalid image URL format for deletion")
-            return false
-        }
-        const filePath = urlParts[1]
+	try {
+		// Extract file path from URL
+		// URL format: .../storage/v1/object/public/bucketName/fileName
+		const urlParts = imageUrl.split(`/${bucketName}/`);
+		if (urlParts.length < 2) {
+			console.error("Invalid image URL format for deletion");
+			return false;
+		}
+		const filePath = urlParts[1];
 
-        const { error } = await supabase.storage.from(bucketName).remove([filePath])
+		const { error } = await supabase.storage
+			.from(bucketName)
+			.remove([filePath]);
 
-        if (error) {
-            console.error("Supabase delete error:", error)
-            return false
-        }
+		if (error) {
+			console.error("Supabase delete error:", error);
+			return false;
+		}
 
-        return true
-    } catch (error) {
-        console.error("Error deleting file:", error)
-        return false
-    }
+		return true;
+	} catch (error) {
+		console.error("Error deleting file:", error);
+		return false;
+	}
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Trash2, Users } from "lucide-react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 
 import { deleteRole } from "@/actions/role";
@@ -28,10 +29,12 @@ import {
 } from "@/components/ui/table";
 import type { PermissionDB, RoleDB } from "@/types";
 
-import dynamic from "next/dynamic";
-const RoleDialog = dynamic(() => import("./role-dialog").then((m) => m.RoleDialog), {
-	ssr: false,
-});
+const RoleDialog = dynamic(
+	() => import("./role-dialog").then((m) => m.RoleDialog),
+	{
+		ssr: false,
+	},
+);
 
 interface RoleListProps {
 	roles: RoleDB[];
@@ -59,11 +62,11 @@ export function RoleList({ roles, allPermissions }: RoleListProps) {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead className="w-[150px]">Role Name</TableHead>
-									<TableHead className="w-[200px]">Description</TableHead>
+									<TableHead className="w-37.5">Role Name</TableHead>
+									<TableHead className="w-50">Description</TableHead>
 									<TableHead>Permissions</TableHead>
-									<TableHead className="w-[100px] text-center">Users</TableHead>
-									<TableHead className="w-[100px] text-right"></TableHead>
+									<TableHead className="w-25 text-center">Users</TableHead>
+									<TableHead className="w-25 text-right"></TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -83,7 +86,7 @@ export function RoleList({ roles, allPermissions }: RoleListProps) {
 												{role.description || "No description provided"}
 											</TableCell>
 											<TableCell>
-												<div className="flex flex-wrap gap-1.5 max-w-[500px]">
+												<div className="flex flex-wrap gap-1.5 max-w-125">
 													{mappedPermissions.length === 0 ? (
 														<span className="text-xs text-muted-foreground italic">
 															No permissions assigned

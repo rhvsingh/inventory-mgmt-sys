@@ -1,9 +1,13 @@
-import type { Metadata } from "next"
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Import Products",
-}
+	title: "Import Products",
+};
 
-export default function ImportLayout({ children }: { children: React.ReactNode }) {
-    return <>{children}</>
+export default function ImportLayout({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
+	return <>{children}</>;
 }

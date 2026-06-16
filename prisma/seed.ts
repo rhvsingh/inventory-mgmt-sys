@@ -229,7 +229,7 @@ async function main() {
             ADD CONSTRAINT positive_stock CHECK ("stockQty" >= 0);
         `)
         console.log("Database constraint 'positive_stock' verified/added successfully.")
-    } catch (e) {
+    } catch {
         console.log("Constraint 'positive_stock' already exists or is active.")
     }
 

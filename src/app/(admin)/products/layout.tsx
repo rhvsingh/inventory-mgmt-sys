@@ -1,10 +1,16 @@
-const ProductsLayout = ({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) => {
-    return (
-        <>
-            {children}
-            {modal}
-        </>
-    )
-}
+const ProductsLayout = ({
+	children,
+	modal,
+}: {
+	children: React.ReactNode;
+	modal: React.ReactNode;
+}) => {
+	return (
+		<>
+			{children}
+			{modal}
+		</>
+	);
+};
 
-export default ProductsLayout
+export default ProductsLayout;

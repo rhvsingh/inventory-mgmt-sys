@@ -1,7 +1,7 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function FilterSkeleton() {
-    return (
-        <Skeleton className="h-10 w-24" /> // Button size
-    )
+	return (
+		<Skeleton className="h-10 w-24" /> // Button size
+	);
 }

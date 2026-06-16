@@ -1,94 +1,111 @@
-"use client"
+"use client";
 
-import { MoreHorizontal, Trash2 } from "lucide-react"
-import dynamic from "next/dynamic"
-import { toast } from "sonner"
+import { MoreHorizontal, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
+import { toast } from "sonner";
 
-import { deleteUser } from "@/actions/user"
+import { deleteUser } from "@/actions/user";
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import type { User } from "@/types"
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { User } from "@/types";
 
-const EditUserDialog = dynamic(() => import("./edit-user-dialog").then((m) => m.EditUserDialog), { ssr: false })
-const ChangePasswordDialog = dynamic(() => import("./change-password-dialog").then((m) => m.ChangePasswordDialog), {
-    ssr: false,
-})
+const EditUserDialog = dynamic(
+	() => import("./edit-user-dialog").then((m) => m.EditUserDialog),
+	{ ssr: false },
+);
+const ChangePasswordDialog = dynamic(
+	() => import("./change-password-dialog").then((m) => m.ChangePasswordDialog),
+	{
+		ssr: false,
+	},
+);
 
-export function UserActions({ user, roles }: { user: User; roles: { id: string; name: string }[] }) {
-    async function handleDelete() {
-        const res = await deleteUser(user.id)
-        if (res?.error) {
-            toast.error(res.error)
-        } else {
-            toast.success("User deleted")
-        }
-    }
+export function UserActions({
+	user,
+	roles,
+}: {
+	user: User;
+	roles: { id: string; name: string }[];
+}) {
+	async function handleDelete() {
+		const res = await deleteUser(user.id);
+		if (res?.error) {
+			toast.error(res.error);
+		} else {
+			toast.success("User deleted");
+		}
+	}
 
-    return (
-        <div className="flex items-center gap-2">
-            <EditUserDialog user={user} roles={roles} />
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <div className="p-1">
-                        <ChangePasswordDialog userId={user.id} userName={user.name} isAdminReset={true} />
-                    </div>
-                    <DropdownMenuSeparator />
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete User
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the user account.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                    onClick={handleDelete}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                    Delete
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-    )
+	return (
+		<div className="flex items-center gap-2">
+			<EditUserDialog user={user} roles={roles} />
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
+						<span className="sr-only">Open menu</span>
+						<MoreHorizontal className="h-4 w-4" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuLabel>Actions</DropdownMenuLabel>
+					<DropdownMenuSeparator />
+					<div className="p-1">
+						<ChangePasswordDialog
+							userId={user.id}
+							userName={user.name}
+							isAdminReset={true}
+						/>
+					</div>
+					<DropdownMenuSeparator />
+					<AlertDialog>
+						<AlertDialogTrigger asChild>
+							<Button
+								variant="ghost"
+								size="sm"
+								className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+							>
+								<Trash2 className="mr-2 h-4 w-4" />
+								Delete User
+							</Button>
+						</AlertDialogTrigger>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>Are you sure?</AlertDialogTitle>
+								<AlertDialogDescription>
+									This action cannot be undone. This will permanently delete the
+									user account.
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel>Cancel</AlertDialogCancel>
+								<AlertDialogAction
+									onClick={handleDelete}
+									className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+								>
+									Delete
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</div>
+	);
 }

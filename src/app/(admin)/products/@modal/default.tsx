@@ -1,5 +1,5 @@
 const ModalDefault = () => {
-    return null
-}
+	return null;
+};
 
-export default ModalDefault
+export default ModalDefault;

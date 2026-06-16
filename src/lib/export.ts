@@ -5,7 +5,7 @@
  * @param data Array of objects representing the rows.
  * @param filename Desired name of the exported file (excluding extension).
  */
-export function exportToCSV(data: Record<string, any>[], filename: string) {
+export function exportToCSV(data: Record<string, unknown>[], filename: string) {
     if (data.length === 0) return
 
     const headers = Object.keys(data[0])

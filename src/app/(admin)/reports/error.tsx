@@ -1,5 +1,5 @@
-"use client"
+"use client";
 
-import { GenericErrorBoundary } from "@/components/error-boundary"
+import { GenericErrorBoundary } from "@/components/error-boundary";
 
-export default GenericErrorBoundary
+export default GenericErrorBoundary;

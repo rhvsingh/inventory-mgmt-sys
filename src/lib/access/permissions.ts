@@ -1,7 +1,8 @@
-import type { Action, Permission } from "./types"
+import type { Action, Permission } from "./types";
 
 // Helper to enforce type safety on permission strings
-const p = <T extends string>(permission: T): T & Permission => permission as T & Permission
+const p = <T extends string>(permission: T): T & Permission =>
+	permission as T & Permission;
 
 /**
  * Permission Registry — Single source of truth for ALL permissions in the system.
@@ -11,131 +12,131 @@ const p = <T extends string>(permission: T): T & Permission => permission as T &
  * the `name` column in the database `Permission` table.
  */
 export const PERMISSIONS = {
-    // ─── PRODUCTS ─────────────────────────────────────────────────
-    product: {
-        create: p("products:create"),
-        read: p("products:read"),
-        update: p("products:update"),
-        archive: p("products:archive"),
-        delete: p("products:delete"),
-        import: p("products:import"),
-    },
+	// ─── PRODUCTS ─────────────────────────────────────────────────
+	product: {
+		create: p("products:create"),
+		read: p("products:read"),
+		update: p("products:update"),
+		archive: p("products:archive"),
+		delete: p("products:delete"),
+		import: p("products:import"),
+	},
 
-    // ─── TRANSACTIONS ─────────────────────────────────────────────
-    transaction: {
-        create: p("transactions:create"),
-        create_purchase: p("transactions:create_purchase"),
-        read: p("transactions:read"),
-    },
+	// ─── TRANSACTIONS ─────────────────────────────────────────────
+	transaction: {
+		create: p("transactions:create"),
+		create_purchase: p("transactions:create_purchase"),
+		read: p("transactions:read"),
+	},
 
-    // ─── ADJUSTMENTS ──────────────────────────────────────────────
-    adjustment: {
-        create: p("adjustments:create"),
-        create_unbounded: p("adjustments:create_unbounded"),
-    },
+	// ─── ADJUSTMENTS ──────────────────────────────────────────────
+	adjustment: {
+		create: p("adjustments:create"),
+		create_unbounded: p("adjustments:create_unbounded"),
+	},
 
-    // ─── USERS ────────────────────────────────────────────────────
-    user: {
-        create: p("users:create"),
-        read: p("users:read"),
-        update: p("users:update"),
-        delete: p("users:delete"),
-    },
+	// ─── USERS ────────────────────────────────────────────────────
+	user: {
+		create: p("users:create"),
+		read: p("users:read"),
+		update: p("users:update"),
+		delete: p("users:delete"),
+	},
 
-    // ─── ROLES ────────────────────────────────────────────────────
-    role: {
-        create: p("roles:create"),
-        read: p("roles:read"),
-        update: p("roles:update"),
-        delete: p("roles:delete"),
-    },
+	// ─── ROLES ────────────────────────────────────────────────────
+	role: {
+		create: p("roles:create"),
+		read: p("roles:read"),
+		update: p("roles:update"),
+		delete: p("roles:delete"),
+	},
 
-    // ─── REPORTS ──────────────────────────────────────────────────
-    report: {
-        low_stock: p("reports:low_stock"),
-        valuation: p("reports:valuation"),
-        history: p("reports:history"),
-    },
+	// ─── REPORTS ──────────────────────────────────────────────────
+	report: {
+		low_stock: p("reports:low_stock"),
+		valuation: p("reports:valuation"),
+		history: p("reports:history"),
+	},
 
-    // ─── NOTIFICATIONS ────────────────────────────────────────────
-    notification: {
-        read: p("notifications:read"),
-    },
+	// ─── NOTIFICATIONS ────────────────────────────────────────────
+	notification: {
+		read: p("notifications:read"),
+	},
 
-    // ─── CUSTOMERS ──────────────────────────────────────────────
-    customer: {
-        create: p("customers:create"),
-        read: p("customers:read"),
-        update: p("customers:update"),
-        delete: p("customers:delete"),
-    },
+	// ─── CUSTOMERS ──────────────────────────────────────────────
+	customer: {
+		create: p("customers:create"),
+		read: p("customers:read"),
+		update: p("customers:update"),
+		delete: p("customers:delete"),
+	},
 
-    // ─── SUPPLIERS ──────────────────────────────────────────────
-    supplier: {
-        create: p("suppliers:create"),
-        read: p("suppliers:read"),
-        update: p("suppliers:update"),
-        delete: p("suppliers:delete"),
-    },
+	// ─── SUPPLIERS ──────────────────────────────────────────────
+	supplier: {
+		create: p("suppliers:create"),
+		read: p("suppliers:read"),
+		update: p("suppliers:update"),
+		delete: p("suppliers:delete"),
+	},
 
-    // ─── AUDIT LOGS ──────────────────────────────────────────────
-    auditLog: {
-        read: p("audit_logs:read"),
-    },
-} as const
+	// ─── AUDIT LOGS ──────────────────────────────────────────────
+	auditLog: {
+		read: p("audit_logs:read"),
+	},
+} as const;
 
 /**
  * Flat list of all permission strings for validation/iteration.
  */
-export const ALL_PERMISSIONS: Permission[] = Object.values(PERMISSIONS).flatMap((resource) =>
-    Object.values(resource),
-) as Permission[]
+export const ALL_PERMISSIONS: Permission[] = Object.values(PERMISSIONS).flatMap(
+	(resource) => Object.values(resource),
+) as Permission[];
 
 /**
  * Maps every Action to the exact DB permission string it requires.
  * Every entry is a 1:1 mapping — no more coarse "write"/"manage" bundles.
  */
 export const actionToPermissionMap: Record<Action, Permission> = {
-    // Products
-    "products:create": PERMISSIONS.product.create,
-    "products:read": PERMISSIONS.product.read,
-    "products:update": PERMISSIONS.product.update,
-    "products:delete": PERMISSIONS.product.delete,
-    "products:archive": PERMISSIONS.product.archive,
-    "products:import": PERMISSIONS.product.import,
-    // Transactions
-    "transactions:create": PERMISSIONS.transaction.create,
-    "transactions:create_purchase": PERMISSIONS.transaction.create_purchase,
-    "transactions:read": PERMISSIONS.transaction.read,
-    // Adjustments
-    "adjustments:create": PERMISSIONS.adjustment.create,
-    "adjustments:create_unbounded": PERMISSIONS.adjustment.create_unbounded,
-    // Users
-    "users:create": PERMISSIONS.user.create,
-    "users:read": PERMISSIONS.user.read,
-    "users:update": PERMISSIONS.user.update,
-    "users:delete": PERMISSIONS.user.delete,
-    // Roles
-    "roles:create": PERMISSIONS.role.create,
-    "roles:read": PERMISSIONS.role.read,
-    "roles:update": PERMISSIONS.role.update,
-    "roles:delete": PERMISSIONS.role.delete,
-    // Reports
-    "reports:read_low_stock": PERMISSIONS.report.low_stock,
-    "reports:read_history": PERMISSIONS.report.history,
-    "reports:read_valuation": PERMISSIONS.report.valuation,
-    // Notifications
-    "notifications:read": PERMISSIONS.notification.read,
-    // Customers
-    "customers:create": PERMISSIONS.customer.create,
-    "customers:read": PERMISSIONS.customer.read,
-    "customers:update": PERMISSIONS.customer.update,
-    "customers:delete": PERMISSIONS.customer.delete,
-    // Suppliers
-    "suppliers:create": PERMISSIONS.supplier.create,
-    "suppliers:read": PERMISSIONS.supplier.read,
-    "suppliers:update": PERMISSIONS.supplier.update,
-    "suppliers:delete": PERMISSIONS.supplier.delete,
-    // Audit Logs
-    "audit_logs:read": PERMISSIONS.auditLog.read,
-}
+	// Products
+	"products:create": PERMISSIONS.product.create,
+	"products:read": PERMISSIONS.product.read,
+	"products:update": PERMISSIONS.product.update,
+	"products:delete": PERMISSIONS.product.delete,
+	"products:archive": PERMISSIONS.product.archive,
+	"products:import": PERMISSIONS.product.import,
+	// Transactions
+	"transactions:create": PERMISSIONS.transaction.create,
+	"transactions:create_purchase": PERMISSIONS.transaction.create_purchase,
+	"transactions:read": PERMISSIONS.transaction.read,
+	// Adjustments
+	"adjustments:create": PERMISSIONS.adjustment.create,
+	"adjustments:create_unbounded": PERMISSIONS.adjustment.create_unbounded,
+	// Users
+	"users:create": PERMISSIONS.user.create,
+	"users:read": PERMISSIONS.user.read,
+	"users:update": PERMISSIONS.user.update,
+	"users:delete": PERMISSIONS.user.delete,
+	// Roles
+	"roles:create": PERMISSIONS.role.create,
+	"roles:read": PERMISSIONS.role.read,
+	"roles:update": PERMISSIONS.role.update,
+	"roles:delete": PERMISSIONS.role.delete,
+	// Reports
+	"reports:read_low_stock": PERMISSIONS.report.low_stock,
+	"reports:read_history": PERMISSIONS.report.history,
+	"reports:read_valuation": PERMISSIONS.report.valuation,
+	// Notifications
+	"notifications:read": PERMISSIONS.notification.read,
+	// Customers
+	"customers:create": PERMISSIONS.customer.create,
+	"customers:read": PERMISSIONS.customer.read,
+	"customers:update": PERMISSIONS.customer.update,
+	"customers:delete": PERMISSIONS.customer.delete,
+	// Suppliers
+	"suppliers:create": PERMISSIONS.supplier.create,
+	"suppliers:read": PERMISSIONS.supplier.read,
+	"suppliers:update": PERMISSIONS.supplier.update,
+	"suppliers:delete": PERMISSIONS.supplier.delete,
+	// Audit Logs
+	"audit_logs:read": PERMISSIONS.auditLog.read,
+};

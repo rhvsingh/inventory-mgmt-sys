@@ -1,535 +1,588 @@
-"use server"
+"use server";
 
-import "server-only"
+import "server-only";
 
-import type { Prisma } from "@prisma/client"
-import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
-import { redirect } from "next/navigation"
+import type { Prisma } from "@prisma/client";
+import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache";
+import { redirect } from "next/navigation";
 
-import { logActivity } from "@/actions/audit"
-import { auth } from "@/auth"
-import { Authz } from "@/lib/access"
-import { prisma } from "@/lib/prisma"
-import { serializePrisma } from "@/lib/prisma-utils"
-import { productSchema } from "@/lib/schemas"
-import { deleteImage, uploadImage } from "@/lib/upload"
-import type { ActionState, Product } from "@/types"
+import { logActivity } from "@/actions/audit";
+import { auth } from "@/auth";
+import { Authz } from "@/lib/access";
+import { prisma } from "@/lib/prisma";
+import { serializePrisma } from "@/lib/prisma-utils";
+import { productSchema } from "@/lib/schemas";
+import { deleteImage, uploadImage } from "@/lib/upload";
+import type { ActionState, Product } from "@/types";
 
-export async function createProduct(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
-    const session = await auth()
-    if (!session?.user) {
-        return { error: "Unauthorized" }
-    }
-    const authCheck = Authz.check(session.user, "products:create")
-    if (!authCheck.authorized) {
-        return { error: authCheck.reason || "Unauthorized" }
-    }
-    const rawData = {
-        sku: formData.get("sku"),
-        name: formData.get("name"),
-        brand: formData.get("brand"),
-        category: formData.get("category"),
-        costPrice: formData.get("costPrice"),
-        salePrice: formData.get("salePrice"),
-        stockQty: formData.get("stockQty"),
-        minStock: formData.get("minStock"),
-        barcode: formData.get("barcode"),
-        supplierId: formData.get("supplierId"),
-    }
+export async function createProduct(
+	_prevState: ActionState | null,
+	formData: FormData,
+): Promise<ActionState> {
+	const session = await auth();
+	if (!session?.user) {
+		return { error: "Unauthorized" };
+	}
+	const authCheck = Authz.check(session.user, "products:create");
+	if (!authCheck.authorized) {
+		return { error: authCheck.reason || "Unauthorized" };
+	}
+	const rawData = {
+		sku: formData.get("sku"),
+		name: formData.get("name"),
+		brand: formData.get("brand"),
+		category: formData.get("category"),
+		costPrice: formData.get("costPrice"),
+		salePrice: formData.get("salePrice"),
+		stockQty: formData.get("stockQty"),
+		minStock: formData.get("minStock"),
+		barcode: formData.get("barcode"),
+		supplierId: formData.get("supplierId"),
+	};
 
-    const validatedData = productSchema.safeParse(rawData)
+	const validatedData = productSchema.safeParse(rawData);
 
-    if (!validatedData.success) {
-        return {
-            error: "Invalid data",
-            issues: validatedData.error.issues.map((issue) => ({
-                message: issue.message,
-                path: issue.path.filter((p): p is string | number => typeof p === "string" || typeof p === "number"),
-            })),
-        }
-    }
+	if (!validatedData.success) {
+		return {
+			error: "Invalid data",
+			issues: validatedData.error.issues.map((issue) => ({
+				message: issue.message,
+				path: issue.path.filter(
+					(p): p is string | number =>
+						typeof p === "string" || typeof p === "number",
+				),
+			})),
+		};
+	}
 
-    const imageFile = formData.get("image") as File
-    let imageUrl: string | null = null
+	const imageFile = formData.get("image") as File;
+	let imageUrl: string | null = null;
 
-    if (imageFile && imageFile.size > 0) {
-        if (imageFile.size > 5 * 1024 * 1024) {
-            return { error: "File size must be less than 5MB" }
-        }
-        if (!imageFile.type.startsWith("image/")) {
-            return { error: "File must be an image" }
-        }
-        // SEC-06: Validate file extension against allowlist (MIME type is client-provided and spoofable)
-        const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
-        const ext = `.${imageFile.name.split(".").pop()?.toLowerCase() || ""}`
-        if (!ALLOWED_EXTENSIONS.includes(ext)) {
-            return { error: "Only JPG, PNG, WebP, and GIF images are allowed" }
-        }
-        imageUrl = await uploadImage(imageFile)
-    }
+	if (imageFile && imageFile.size > 0) {
+		if (imageFile.size > 5 * 1024 * 1024) {
+			return { error: "File size must be less than 5MB" };
+		}
+		if (!imageFile.type.startsWith("image/")) {
+			return { error: "File must be an image" };
+		}
+		// SEC-06: Validate file extension against allowlist (MIME type is client-provided and spoofable)
+		const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+		const ext = `.${imageFile.name.split(".").pop()?.toLowerCase() || ""}`;
+		if (!ALLOWED_EXTENSIONS.includes(ext)) {
+			return { error: "Only JPG, PNG, WebP, and GIF images are allowed" };
+		}
+		imageUrl = await uploadImage(imageFile);
+	}
 
-    // Convert empty strings to null for optional unique fields to avoid P2002
-    const dataToCreate = {
-        ...validatedData.data,
-        imageUrl: imageUrl,
-        barcode: validatedData.data.barcode || null,
-        brand: validatedData.data.brand || null,
-        category: validatedData.data.category || null,
-        supplierId: validatedData.data.supplierId === "none" ? null : validatedData.data.supplierId || null,
-    }
+	// Convert empty strings to null for optional unique fields to avoid P2002
+	const dataToCreate = {
+		...validatedData.data,
+		imageUrl: imageUrl,
+		barcode: validatedData.data.barcode || null,
+		brand: validatedData.data.brand || null,
+		category: validatedData.data.category || null,
+		supplierId:
+			validatedData.data.supplierId === "none"
+				? null
+				: validatedData.data.supplierId || null,
+	};
 
-    try {
-        const product = await prisma.product.create({
-            data: dataToCreate,
-        })
-        await logActivity("PRODUCT_CREATE", { id: product.id, sku: product.sku, name: product.name })
-    } catch (error) {
-        console.error("Failed to create product:", error)
-        if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
-            const field = (error as { meta?: { target?: string[] } }).meta?.target?.[0]
-            return { error: `Product with this ${field} already exists.` }
-        }
-        return { error: "Failed to create product. Please try again." }
-    }
+	try {
+		const product = await prisma.product.create({
+			data: dataToCreate,
+		});
+		await logActivity("PRODUCT_CREATE", {
+			id: product.id,
+			sku: product.sku,
+			name: product.name,
+		});
+	} catch (error) {
+		console.error("Failed to create product:", error);
+		if (
+			error &&
+			typeof error === "object" &&
+			"code" in error &&
+			error.code === "P2002"
+		) {
+			const field = (error as { meta?: { target?: string[] } }).meta
+				?.target?.[0];
+			return { error: `Product with this ${field} already exists.` };
+		}
+		return { error: "Failed to create product. Please try again." };
+	}
 
-    revalidateTag("products", "minutes")
-    revalidateTag("reports", "minutes")
-    revalidatePath("/products")
+	revalidateTag("products", "minutes");
+	revalidateTag("reports", "minutes");
+	revalidatePath("/products");
 
-    const skipRedirect = formData.get("skipRedirect") === "true"
-    if (skipRedirect) {
-        return { success: true }
-    }
+	const skipRedirect = formData.get("skipRedirect") === "true";
+	if (skipRedirect) {
+		return { success: true };
+	}
 
-    redirect("/products")
+	redirect("/products");
 }
 
 export async function updateProduct(
-    id: string,
-    _prevState: ActionState | null,
-    formData: FormData,
+	id: string,
+	_prevState: ActionState | null,
+	formData: FormData,
 ): Promise<ActionState> {
-    const session = await auth()
-    if (!session?.user) {
-        return { error: "Unauthorized" }
-    }
-    const authCheck = Authz.check(session.user, "products:update")
-    if (!authCheck.authorized) {
-        return { error: authCheck.reason || "Unauthorized" }
-    }
-    const rawData = {
-        sku: formData.get("sku"),
-        name: formData.get("name"),
-        brand: formData.get("brand"),
-        category: formData.get("category"),
-        costPrice: formData.get("costPrice"),
-        salePrice: formData.get("salePrice"),
-        stockQty: formData.get("stockQty"),
-        minStock: formData.get("minStock"),
-        barcode: formData.get("barcode"),
-        supplierId: formData.get("supplierId"),
-    }
+	const session = await auth();
+	if (!session?.user) {
+		return { error: "Unauthorized" };
+	}
+	const authCheck = Authz.check(session.user, "products:update");
+	if (!authCheck.authorized) {
+		return { error: authCheck.reason || "Unauthorized" };
+	}
+	const rawData = {
+		sku: formData.get("sku"),
+		name: formData.get("name"),
+		brand: formData.get("brand"),
+		category: formData.get("category"),
+		costPrice: formData.get("costPrice"),
+		salePrice: formData.get("salePrice"),
+		stockQty: formData.get("stockQty"),
+		minStock: formData.get("minStock"),
+		barcode: formData.get("barcode"),
+		supplierId: formData.get("supplierId"),
+	};
 
-    const validatedData = productSchema.safeParse(rawData)
+	const validatedData = productSchema.safeParse(rawData);
 
-    if (!validatedData.success) {
-        return {
-            error: "Invalid data",
-            issues: validatedData.error.issues.map((issue) => ({
-                message: issue.message,
-                path: issue.path.filter((p): p is string | number => typeof p === "string" || typeof p === "number"),
-            })),
-        }
-    }
+	if (!validatedData.success) {
+		return {
+			error: "Invalid data",
+			issues: validatedData.error.issues.map((issue) => ({
+				message: issue.message,
+				path: issue.path.filter(
+					(p): p is string | number =>
+						typeof p === "string" || typeof p === "number",
+				),
+			})),
+		};
+	}
 
-    const imageFile = formData.get("image") as File
-    let imageUrl: string | null | undefined
-    if (imageFile && imageFile.size > 0) {
-        if (imageFile.size > 5 * 1024 * 1024) {
-            return { error: "File size must be less than 5MB" }
-        }
-        if (!imageFile.type.startsWith("image/")) {
-            return { error: "File must be an image" }
-        }
-        // SEC-06: Validate file extension against allowlist
-        const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
-        const ext = `.${imageFile.name.split(".").pop()?.toLowerCase() || ""}`
-        if (!ALLOWED_EXTENSIONS.includes(ext)) {
-            return { error: "Only JPG, PNG, WebP, and GIF images are allowed" }
-        }
-        imageUrl = await uploadImage(imageFile)
-    }
+	const imageFile = formData.get("image") as File;
+	let imageUrl: string | null | undefined;
+	if (imageFile && imageFile.size > 0) {
+		if (imageFile.size > 5 * 1024 * 1024) {
+			return { error: "File size must be less than 5MB" };
+		}
+		if (!imageFile.type.startsWith("image/")) {
+			return { error: "File must be an image" };
+		}
+		// SEC-06: Validate file extension against allowlist
+		const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+		const ext = `.${imageFile.name.split(".").pop()?.toLowerCase() || ""}`;
+		if (!ALLOWED_EXTENSIONS.includes(ext)) {
+			return { error: "Only JPG, PNG, WebP, and GIF images are allowed" };
+		}
+		imageUrl = await uploadImage(imageFile);
+	}
 
-    // Convert empty strings to null for optional unique fields
-    const dataToUpdate = {
-        ...validatedData.data,
-        ...({ imageUrl } as { imageUrl?: string }), // simplified
-        barcode: validatedData.data.barcode || null,
-        brand: validatedData.data.brand || null,
-        category: validatedData.data.category || null,
-        supplierId: validatedData.data.supplierId === "none" ? null : validatedData.data.supplierId || null,
-    }
+	// Convert empty strings to null for optional unique fields
+	const dataToUpdate = {
+		...validatedData.data,
+		...({ imageUrl } as { imageUrl?: string }), // simplified
+		barcode: validatedData.data.barcode || null,
+		brand: validatedData.data.brand || null,
+		category: validatedData.data.category || null,
+		supplierId:
+			validatedData.data.supplierId === "none"
+				? null
+				: validatedData.data.supplierId || null,
+	};
 
-    try {
-        const product = await prisma.product.update({
-            where: { id },
-            data: dataToUpdate,
-        })
-        await logActivity("PRODUCT_UPDATE", { id: product.id, sku: product.sku, name: product.name })
-    } catch (error) {
-        console.error("Failed to update product:", error)
-        if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
-            const field = (error as { meta?: { target?: string[] } }).meta?.target?.[0]
-            return { error: `Product with this ${field} already exists.` }
-        }
-        return { error: "Failed to update product. Please try again." }
-    }
+	try {
+		const product = await prisma.product.update({
+			where: { id },
+			data: dataToUpdate,
+		});
+		await logActivity("PRODUCT_UPDATE", {
+			id: product.id,
+			sku: product.sku,
+			name: product.name,
+		});
+	} catch (error) {
+		console.error("Failed to update product:", error);
+		if (
+			error &&
+			typeof error === "object" &&
+			"code" in error &&
+			error.code === "P2002"
+		) {
+			const field = (error as { meta?: { target?: string[] } }).meta
+				?.target?.[0];
+			return { error: `Product with this ${field} already exists.` };
+		}
+		return { error: "Failed to update product. Please try again." };
+	}
 
-    revalidateTag("products", "minutes")
-    revalidateTag(`product-${id}`, "minutes")
-    revalidateTag("reports", "minutes")
-    revalidatePath("/products")
+	revalidateTag("products", "minutes");
+	revalidateTag(`product-${id}`, "minutes");
+	revalidateTag("reports", "minutes");
+	revalidatePath("/products");
 
-    const skipRedirect = formData.get("skipRedirect") === "true"
-    if (skipRedirect) {
-        return { success: true }
-    }
+	const skipRedirect = formData.get("skipRedirect") === "true";
+	if (skipRedirect) {
+		return { success: true };
+	}
 
-    redirect("/products")
+	redirect("/products");
 }
 
 export async function archiveProduct(id: string) {
-    const session = await auth()
-    if (!session?.user) {
-        return { error: "Unauthorized" }
-    }
-    const authCheck = Authz.check(session.user, "products:archive")
-    if (!authCheck.authorized) {
-        return { error: authCheck.reason || "Unauthorized" }
-    }
-    try {
-        await prisma.product.update({
-            where: { id },
-            data: { isArchived: true },
-        })
-        revalidateTag("products", "minutes")
-        revalidateTag("reports", "minutes")
-        revalidatePath("/products")
-        return { success: true }
-    } catch (error) {
-        console.error("Failed to archive product:", error)
-        return { error: "Failed to archive product" }
-    }
+	const session = await auth();
+	if (!session?.user) {
+		return { error: "Unauthorized" };
+	}
+	const authCheck = Authz.check(session.user, "products:archive");
+	if (!authCheck.authorized) {
+		return { error: authCheck.reason || "Unauthorized" };
+	}
+	try {
+		await prisma.product.update({
+			where: { id },
+			data: { isArchived: true },
+		});
+		revalidateTag("products", "minutes");
+		revalidateTag("reports", "minutes");
+		revalidatePath("/products");
+		return { success: true };
+	} catch (error) {
+		console.error("Failed to archive product:", error);
+		return { error: "Failed to archive product" };
+	}
 }
 
 export async function unarchiveProduct(id: string) {
-    const session = await auth()
-    if (!session?.user) {
-        return { error: "Unauthorized" }
-    }
-    const authCheck = Authz.check(session.user, "products:archive")
-    if (!authCheck.authorized) {
-        return { error: authCheck.reason || "Unauthorized" }
-    }
-    try {
-        await prisma.product.update({
-            where: { id },
-            data: { isArchived: false },
-        })
-        revalidateTag("products", "minutes")
-        revalidateTag("reports", "minutes")
-        revalidatePath("/products")
-        return { success: true }
-    } catch (error) {
-        console.error("Failed to unarchive product:", error)
-        return { error: "Failed to unarchive product" }
-    }
+	const session = await auth();
+	if (!session?.user) {
+		return { error: "Unauthorized" };
+	}
+	const authCheck = Authz.check(session.user, "products:archive");
+	if (!authCheck.authorized) {
+		return { error: authCheck.reason || "Unauthorized" };
+	}
+	try {
+		await prisma.product.update({
+			where: { id },
+			data: { isArchived: false },
+		});
+		revalidateTag("products", "minutes");
+		revalidateTag("reports", "minutes");
+		revalidatePath("/products");
+		return { success: true };
+	} catch (error) {
+		console.error("Failed to unarchive product:", error);
+		return { error: "Failed to unarchive product" };
+	}
 }
 
 export async function deleteProduct(id: string) {
-    const session = await auth()
-    if (!session?.user) {
-        return { error: "Unauthorized" }
-    }
+	const session = await auth();
+	if (!session?.user) {
+		return { error: "Unauthorized" };
+	}
 
-    const dependencyCount = await prisma.transactionItem.count({
-        where: { productId: id },
-    })
+	const dependencyCount = await prisma.transactionItem.count({
+		where: { productId: id },
+	});
 
-    const adjustmentCount = await prisma.adjustment.count({
-        where: { productId: id },
-    })
+	const adjustmentCount = await prisma.adjustment.count({
+		where: { productId: id },
+	});
 
-    const hasDependencies = dependencyCount > 0 || adjustmentCount > 0
+	const hasDependencies = dependencyCount > 0 || adjustmentCount > 0;
 
-    const authCheck = Authz.check(session.user, "products:delete", {
-        product: { hasDependencies },
-    })
-    if (!authCheck.authorized) {
-        return { error: authCheck.reason || "Unauthorized" }
-    }
+	const authCheck = Authz.check(session.user, "products:delete", {
+		product: { hasDependencies },
+	});
+	if (!authCheck.authorized) {
+		return { error: authCheck.reason || "Unauthorized" };
+	}
 
-    try {
-        // Fetch product to get image URL
-        const product = await prisma.product.findUnique({
-            where: { id },
-            select: { imageUrl: true },
-        })
+	try {
+		// Fetch product to get image URL
+		const product = await prisma.product.findUnique({
+			where: { id },
+			select: { imageUrl: true },
+		});
 
-        if (product?.imageUrl) {
-            await deleteImage(product.imageUrl)
-        }
+		if (product?.imageUrl) {
+			await deleteImage(product.imageUrl);
+		}
 
-        const deletedProduct = await prisma.product.delete({
-            where: { id },
-            select: { id: true, sku: true, name: true },
-        })
-        await logActivity("PRODUCT_DELETE", deletedProduct)
-        revalidateTag("products", "minutes")
-        revalidateTag("reports", "minutes")
-        revalidatePath("/products")
-        return { success: true }
-    } catch (error) {
-        console.error("Failed to delete product:", error)
-        return { error: "Failed to delete product" }
-    }
+		const deletedProduct = await prisma.product.delete({
+			where: { id },
+			select: { id: true, sku: true, name: true },
+		});
+		await logActivity("PRODUCT_DELETE", deletedProduct);
+		revalidateTag("products", "minutes");
+		revalidateTag("reports", "minutes");
+		revalidatePath("/products");
+		return { success: true };
+	} catch (error) {
+		console.error("Failed to delete product:", error);
+		return { error: "Failed to delete product" };
+	}
 }
 
-export async function getProducts(options?: { query?: string; supplierId?: string }): Promise<Product[]> {
-    // SEC-14: Auth check before returning product data
-    const session = await auth()
-    if (!session?.user) return []
+export async function getProducts(options?: {
+	query?: string;
+	supplierId?: string;
+}): Promise<Product[]> {
+	// SEC-14: Auth check before returning product data
+	const session = await auth();
+	if (!session?.user) return [];
 
-    return getProductsCached(options)
+	return getProductsCached(options);
 }
 
-async function getProductsCached(options?: { query?: string; supplierId?: string }): Promise<Product[]> {
-    "use cache"
-    // Create a cache key based on options
-    const queryKey = options?.query ? `query-${options.query}` : "no-query"
-    const supplierKey = options?.supplierId ? `supplier-${options.supplierId}` : "no-supplier"
-    cacheTag("products", queryKey, supplierKey)
-    cacheLife("minutes")
+async function getProductsCached(options?: {
+	query?: string;
+	supplierId?: string;
+}): Promise<Product[]> {
+	"use cache";
+	// Create a cache key based on options
+	const queryKey = options?.query ? `query-${options.query}` : "no-query";
+	const supplierKey = options?.supplierId
+		? `supplier-${options.supplierId}`
+		: "no-supplier";
+	cacheTag("products", queryKey, supplierKey);
+	cacheLife("minutes");
 
-    const products = await prisma.product.findMany({
-        where: {
-            isArchived: false,
-            ...(options?.query
-                ? {
-                      OR: [
-                          { name: { contains: options.query, mode: "insensitive" } },
-                          { sku: { contains: options.query, mode: "insensitive" } },
-                          { brand: { contains: options.query, mode: "insensitive" } },
-                          { category: { contains: options.query, mode: "insensitive" } },
-                      ],
-                  }
-                : {}),
-            ...(options?.supplierId ? { supplierId: options.supplierId } : {}),
-        },
-        orderBy: { createdAt: "desc" },
-        include: {
-            supplier: {
-                select: {
-                    id: true,
-                    name: true,
-                },
-            },
-        },
-    })
-    return serializePrisma(products)
+	const products = await prisma.product.findMany({
+		where: {
+			isArchived: false,
+			...(options?.query
+				? {
+						OR: [
+							{ name: { contains: options.query, mode: "insensitive" } },
+							{ sku: { contains: options.query, mode: "insensitive" } },
+							{ brand: { contains: options.query, mode: "insensitive" } },
+							{ category: { contains: options.query, mode: "insensitive" } },
+						],
+					}
+				: {}),
+			...(options?.supplierId ? { supplierId: options.supplierId } : {}),
+		},
+		orderBy: { createdAt: "desc" },
+		include: {
+			supplier: {
+				select: {
+					id: true,
+					name: true,
+				},
+			},
+		},
+	});
+	return serializePrisma(products);
 }
 
 export interface ProductFilters {
-    categories?: string[]
-    brands?: string[]
-    minPrice?: number
-    maxPrice?: number
-    inStock?: boolean
-    isArchived?: boolean
+	categories?: string[];
+	brands?: string[];
+	minPrice?: number;
+	maxPrice?: number;
+	inStock?: boolean;
+	isArchived?: boolean;
 }
 
 export async function getProductsPaginated(
-    query?: string,
-    page: number = 1,
-    limit: number = 10,
-    filters?: ProductFilters,
-): Promise<{ products: Product[]; metadata: { total: number; page: number; totalPages: number } }> {
-    // SEC-14: Auth check before returning product data
-    const session = await auth()
-    if (!session?.user) return { products: [], metadata: { total: 0, page: 1, totalPages: 0 } }
+	query?: string,
+	page: number = 1,
+	limit: number = 10,
+	filters?: ProductFilters,
+): Promise<{
+	products: Product[];
+	metadata: { total: number; page: number; totalPages: number };
+}> {
+	// SEC-14: Auth check before returning product data
+	const session = await auth();
+	if (!session?.user)
+		return { products: [], metadata: { total: 0, page: 1, totalPages: 0 } };
 
-    return getProductsPaginatedCached(query, page, limit, filters)
+	return getProductsPaginatedCached(query, page, limit, filters);
 }
 
 async function getProductsPaginatedCached(
-    query?: string,
-    page: number = 1,
-    limit: number = 10,
-    filters?: ProductFilters,
-): Promise<{ products: Product[]; metadata: { total: number; page: number; totalPages: number } }> {
-    "use cache"
-    cacheTag("products")
-    cacheLife("minutes")
+	query?: string,
+	page: number = 1,
+	limit: number = 10,
+	filters?: ProductFilters,
+): Promise<{
+	products: Product[];
+	metadata: { total: number; page: number; totalPages: number };
+}> {
+	"use cache";
+	cacheTag("products");
+	cacheLife("minutes");
 
-    const skip = (page - 1) * limit
+	const skip = (page - 1) * limit;
 
-    const where: Prisma.ProductWhereInput = {
-        isArchived: false,
-    }
+	const where: Prisma.ProductWhereInput = {
+		isArchived: false,
+	};
 
-    // Search query
-    if (query) {
-        where.OR = [
-            { name: { contains: query, mode: "insensitive" as const } },
-            { sku: { contains: query, mode: "insensitive" as const } },
-            { brand: { contains: query, mode: "insensitive" as const } },
-            { category: { contains: query, mode: "insensitive" as const } },
-        ]
-    }
+	// Search query
+	if (query) {
+		where.OR = [
+			{ name: { contains: query, mode: "insensitive" as const } },
+			{ sku: { contains: query, mode: "insensitive" as const } },
+			{ brand: { contains: query, mode: "insensitive" as const } },
+			{ category: { contains: query, mode: "insensitive" as const } },
+		];
+	}
 
-    // Filters
-    if (filters?.categories?.length) {
-        where.category = { in: filters.categories }
-    }
+	// Filters
+	if (filters?.categories?.length) {
+		where.category = { in: filters.categories };
+	}
 
-    if (filters?.brands?.length) {
-        where.brand = { in: filters.brands }
-    }
+	if (filters?.brands?.length) {
+		where.brand = { in: filters.brands };
+	}
 
-    if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
-        where.salePrice = {}
-        if (filters.minPrice !== undefined) where.salePrice.gte = filters.minPrice
-        if (filters.maxPrice !== undefined) where.salePrice.lte = filters.maxPrice
-    }
+	if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
+		where.salePrice = {};
+		if (filters.minPrice !== undefined) where.salePrice.gte = filters.minPrice;
+		if (filters.maxPrice !== undefined) where.salePrice.lte = filters.maxPrice;
+	}
 
-    if (filters?.inStock) {
-        where.stockQty = { gt: 0 }
-    }
+	if (filters?.inStock) {
+		where.stockQty = { gt: 0 };
+	}
 
-    if (filters?.isArchived !== undefined) {
-        where.isArchived = filters.isArchived
-    }
+	if (filters?.isArchived !== undefined) {
+		where.isArchived = filters.isArchived;
+	}
 
-    const [products, total] = await Promise.all([
-        prisma.product.findMany({
-            where,
-            orderBy: { createdAt: "desc" },
-            skip,
-            take: limit,
-            include: {
-                supplier: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-            },
-        }),
-        prisma.product.count({ where }),
-    ])
+	const [products, total] = await Promise.all([
+		prisma.product.findMany({
+			where,
+			orderBy: { createdAt: "desc" },
+			skip,
+			take: limit,
+			include: {
+				supplier: {
+					select: {
+						id: true,
+						name: true,
+					},
+				},
+			},
+		}),
+		prisma.product.count({ where }),
+	]);
 
-    return {
-        products: serializePrisma(products),
-        metadata: {
-            total,
-            page,
-            totalPages: Math.ceil(total / limit),
-        },
-    }
+	return {
+		products: serializePrisma(products),
+		metadata: {
+			total,
+			page,
+			totalPages: Math.ceil(total / limit),
+		},
+	};
 }
 
 export async function getDistinctValues() {
-    "use cache"
-    cacheTag("products", "product-filters")
-    cacheLife("hours") // Filters change less often
+	"use cache";
+	cacheTag("products", "product-filters");
+	cacheLife("hours"); // Filters change less often
 
-    const [categories, brands] = await Promise.all([
-        prisma.product.findMany({
-            where: { isArchived: false, category: { not: null } },
-            select: { category: true },
-            distinct: ["category"],
-        }),
-        prisma.product.findMany({
-            where: { isArchived: false, brand: { not: null } },
-            select: { brand: true },
-            distinct: ["brand"],
-        }),
-    ])
+	const [categories, brands] = await Promise.all([
+		prisma.product.findMany({
+			where: { isArchived: false, category: { not: null } },
+			select: { category: true },
+			distinct: ["category"],
+		}),
+		prisma.product.findMany({
+			where: { isArchived: false, brand: { not: null } },
+			select: { brand: true },
+			distinct: ["brand"],
+		}),
+	]);
 
-    return {
-        categories: categories.map((c) => c.category).filter(Boolean) as string[],
-        brands: brands.map((b) => b.brand).filter(Boolean) as string[],
-    }
+	return {
+		categories: categories.map((c) => c.category).filter(Boolean) as string[],
+		brands: brands.map((b) => b.brand).filter(Boolean) as string[],
+	};
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
-    // Removed 'use cache' to prevent stale data on edit screens
-    // "use cache"
-    // cacheTag(`product-${id}`, "products")
-    // cacheLife("minutes")
+	// Removed 'use cache' to prevent stale data on edit screens
+	// "use cache"
+	// cacheTag(`product-${id}`, "products")
+	// cacheLife("minutes")
 
-    const product = await prisma.product.findUnique({
-        where: { id },
-    })
-    return serializePrisma(product)
+	const product = await prisma.product.findUnique({
+		where: { id },
+	});
+	return serializePrisma(product);
 }
 
 export type ExportedProduct = Omit<Product, "supplier"> & {
-    supplier?: { name: string } | null
-}
+	supplier?: { name: string } | null;
+};
 
-export async function getAllProductsForExport(query?: string, filters?: ProductFilters): Promise<ExportedProduct[]> {
-    const session = await auth()
-    if (!session?.user) return []
-    const authCheck = Authz.check(session.user, "products:read")
-    if (!authCheck.authorized) return []
+export async function getAllProductsForExport(
+	query?: string,
+	filters?: ProductFilters,
+): Promise<ExportedProduct[]> {
+	const session = await auth();
+	if (!session?.user) return [];
+	const authCheck = Authz.check(session.user, "products:read");
+	if (!authCheck.authorized) return [];
 
-    const where: Prisma.ProductWhereInput = {}
+	const where: Prisma.ProductWhereInput = {};
 
-    if (query) {
-        where.OR = [
-            { name: { contains: query, mode: "insensitive" as const } },
-            { sku: { contains: query, mode: "insensitive" as const } },
-            { brand: { contains: query, mode: "insensitive" as const } },
-            { category: { contains: query, mode: "insensitive" as const } },
-        ]
-    }
+	if (query) {
+		where.OR = [
+			{ name: { contains: query, mode: "insensitive" as const } },
+			{ sku: { contains: query, mode: "insensitive" as const } },
+			{ brand: { contains: query, mode: "insensitive" as const } },
+			{ category: { contains: query, mode: "insensitive" as const } },
+		];
+	}
 
-    if (filters?.categories?.length) {
-        where.category = { in: filters.categories }
-    }
+	if (filters?.categories?.length) {
+		where.category = { in: filters.categories };
+	}
 
-    if (filters?.brands?.length) {
-        where.brand = { in: filters.brands }
-    }
+	if (filters?.brands?.length) {
+		where.brand = { in: filters.brands };
+	}
 
-    if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
-        where.salePrice = {}
-        if (filters.minPrice !== undefined) where.salePrice.gte = filters.minPrice
-        if (filters.maxPrice !== undefined) where.salePrice.lte = filters.maxPrice
-    }
+	if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
+		where.salePrice = {};
+		if (filters.minPrice !== undefined) where.salePrice.gte = filters.minPrice;
+		if (filters.maxPrice !== undefined) where.salePrice.lte = filters.maxPrice;
+	}
 
-    if (filters?.inStock) {
-        where.stockQty = { gt: 0 }
-    }
+	if (filters?.inStock) {
+		where.stockQty = { gt: 0 };
+	}
 
-    if (filters?.isArchived !== undefined) {
-        where.isArchived = filters.isArchived
-    } else {
-        where.isArchived = false
-    }
+	if (filters?.isArchived !== undefined) {
+		where.isArchived = filters.isArchived;
+	} else {
+		where.isArchived = false;
+	}
 
-    const products = await prisma.product.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        include: {
-            supplier: {
-                select: {
-                    name: true,
-                },
-            },
-        },
-    })
+	const products = await prisma.product.findMany({
+		where,
+		orderBy: { createdAt: "desc" },
+		include: {
+			supplier: {
+				select: {
+					name: true,
+				},
+			},
+		},
+	});
 
-    return serializePrisma(products)
+	return serializePrisma(products);
 }

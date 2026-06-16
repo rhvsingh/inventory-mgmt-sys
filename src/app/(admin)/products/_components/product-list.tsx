@@ -1,105 +1,139 @@
-"use client"
+"use client";
 
-import { useCallback, useOptimistic, useState } from "react"
-import { Pagination } from "@/components/pagination"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import type { Product } from "@/types"
-import { ColumnToggle } from "./column-toggle"
-import { productColumns } from "./product-columns"
-import { ProductListRow } from "./product-list-row"
+import { useCallback, useOptimistic, useState } from "react";
+import { Pagination } from "@/components/pagination";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import type { Product } from "@/types";
+import { ColumnToggle } from "./column-toggle";
+import { productColumns } from "./product-columns";
+import { ProductListRow } from "./product-list-row";
 
 interface ProductListProps {
-    products: Product[]
-    metadata: {
-        page: number
-        totalPages: number
-        total: number
-    }
-    permissions?: string[]
+	products: Product[];
+	metadata: {
+		page: number;
+		totalPages: number;
+		total: number;
+	};
+	permissions?: string[];
 }
 
-export function ProductList({ products, metadata, permissions }: ProductListProps) {
-    const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(productColumns.map((c) => c.id)))
+export function ProductList({
+	products,
+	metadata,
+	permissions,
+}: ProductListProps) {
+	const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
+		new Set(productColumns.map((c) => c.id)),
+	);
 
-    const [optimisticProducts, updateOptimisticProducts] = useOptimistic(
-        products,
-        (state, action: { type: "delete"; id: string } | { type: "adjust"; id: string; qtyChange: number }) => {
-            if (action.type === "delete") {
-                return state.filter((p) => p.id !== action.id)
-            }
-            if (action.type === "adjust") {
-                return state.map((p) => (p.id === action.id ? { ...p, stockQty: p.stockQty + action.qtyChange } : p))
-            }
-            return state
-        },
-    )
+	const [optimisticProducts, updateOptimisticProducts] = useOptimistic(
+		products,
+		(
+			state,
+			action:
+				| { type: "delete"; id: string }
+				| { type: "adjust"; id: string; qtyChange: number },
+		) => {
+			if (action.type === "delete") {
+				return state.filter((p) => p.id !== action.id);
+			}
+			if (action.type === "adjust") {
+				return state.map((p) =>
+					p.id === action.id
+						? { ...p, stockQty: p.stockQty + action.qtyChange }
+						: p,
+				);
+			}
+			return state;
+		},
+	);
 
-    const toggleColumn = useCallback((column: string) => {
-        setVisibleColumns((prev) => {
-            const newSet = new Set(prev)
-            if (newSet.has(column)) {
-                newSet.delete(column)
-            } else {
-                newSet.add(column)
-            }
-            return newSet
-        })
-    }, [])
+	const toggleColumn = useCallback((column: string) => {
+		setVisibleColumns((prev) => {
+			const newSet = new Set(prev);
+			if (newSet.has(column)) {
+				newSet.delete(column);
+			} else {
+				newSet.add(column);
+			}
+			return newSet;
+		});
+	}, []);
 
-    return (
-        <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-end gap-2">
-                <ColumnToggle visibleColumns={visibleColumns} onToggle={toggleColumn} />
-            </div>
+	return (
+		<div className="flex flex-col gap-4">
+			<div className="flex items-center justify-end gap-2">
+				<ColumnToggle visibleColumns={visibleColumns} onToggle={toggleColumn} />
+			</div>
 
-            <div className="rounded-md border bg-card overflow-x-auto">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {productColumns.map((column) =>
-                                visibleColumns.has(column.id) ? (
-                                    <TableHead
-                                        key={column.id}
-                                        className={column.className || (column.align === "right" ? "text-right" : "")}
-                                    >
-                                        {column.label}
-                                    </TableHead>
-                                ) : null,
-                            )}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {optimisticProducts.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={visibleColumns.size} className="h-24 text-center">
-                                    No products found.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            optimisticProducts.map((product) => (
-                                <ProductListRow
-                                    key={product.id}
-                                    product={product}
-                                    visibleColumns={visibleColumns}
-                                    permissions={permissions}
-                                    onDelete={() => updateOptimisticProducts({ type: "delete", id: product.id })}
-                                    onAdjust={(qtyChange) =>
-                                        updateOptimisticProducts({ type: "adjust", id: product.id, qtyChange })
-                                    }
-                                />
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-                {metadata.totalPages > 1 && (
-                    <Pagination
-                        totalPages={metadata.totalPages}
-                        currentPage={metadata.page}
-                        totalItems={metadata.total}
-                        pageSize={10}
-                    />
-                )}
-            </div>
-        </div>
-    )
+			<div className="rounded-md border bg-card overflow-x-auto">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							{productColumns.map((column) =>
+								visibleColumns.has(column.id) ? (
+									<TableHead
+										key={column.id}
+										className={
+											column.className ||
+											(column.align === "right" ? "text-right" : "")
+										}
+									>
+										{column.label}
+									</TableHead>
+								) : null,
+							)}
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{optimisticProducts.length === 0 ? (
+							<TableRow>
+								<TableCell
+									colSpan={visibleColumns.size}
+									className="h-24 text-center"
+								>
+									No products found.
+								</TableCell>
+							</TableRow>
+						) : (
+							optimisticProducts.map((product) => (
+								<ProductListRow
+									key={product.id}
+									product={product}
+									visibleColumns={visibleColumns}
+									permissions={permissions}
+									onDelete={() =>
+										updateOptimisticProducts({ type: "delete", id: product.id })
+									}
+									onAdjust={(qtyChange) =>
+										updateOptimisticProducts({
+											type: "adjust",
+											id: product.id,
+											qtyChange,
+										})
+									}
+								/>
+							))
+						)}
+					</TableBody>
+				</Table>
+				{metadata.totalPages > 1 && (
+					<Pagination
+						totalPages={metadata.totalPages}
+						currentPage={metadata.page}
+						totalItems={metadata.total}
+						pageSize={10}
+					/>
+				)}
+			</div>
+		</div>
+	);
 }

@@ -1,757 +1,791 @@
-"use server"
+"use server";
 
-import "server-only"
-import type { Prisma } from "@prisma/client"
-import { cacheLife, cacheTag, revalidateTag } from "next/cache"
+import "server-only";
+import type { Prisma } from "@prisma/client";
+import { cacheLife, cacheTag, revalidateTag } from "next/cache";
 
-import { auth } from "@/auth"
-import { Authz } from "@/lib/access"
-import type { Action, AuthUser } from "@/lib/access/types"
-import { prisma } from "@/lib/prisma"
+import { auth } from "@/auth";
+import { Authz } from "@/lib/access";
+import type { Action, AuthUser } from "@/lib/access/types";
+import { prisma } from "@/lib/prisma";
 import type {
-    CustomerStats,
-    EntitySummary,
-    LowStockReportItem,
-    ProfitLossSummary,
-    PurchaseSummary,
-    SalesHistoryItem,
-    SupplierStats,
-    TopProductItem,
-    ValuationReport,
-} from "@/types"
+	CustomerStats,
+	EntitySummary,
+	LowStockReportItem,
+	ProfitLossSummary,
+	PurchaseSummary,
+	SalesHistoryItem,
+	SupplierStats,
+	TopProductItem,
+	ValuationReport,
+} from "@/types";
 
 async function checkReportPermission(action: Action) {
-    const session = await auth()
-    if (!session?.user) {
-        throw new Error("Unauthorized")
-    }
-    const authCheck = Authz.check(session.user as AuthUser, action)
-    if (!authCheck.authorized) {
-        throw new Error(authCheck.reason || "Unauthorized")
-    }
+	const session = await auth();
+	if (!session?.user) {
+		throw new Error("Unauthorized");
+	}
+	const authCheck = Authz.check(session.user as AuthUser, action);
+	if (!authCheck.authorized) {
+		throw new Error(authCheck.reason || "Unauthorized");
+	}
 }
 
 export interface ExportedSupplierStats {
-    SupplierID: string
-    SupplierName: string
-    TotalPurchased: number
-    PurchaseCount: number
+	SupplierID: string;
+	SupplierName: string;
+	TotalPurchased: number;
+	PurchaseCount: number;
 }
 
 export interface ExportedCustomerStats {
-    CustomerID: string
-    CustomerName: string
-    TotalSpent: number
-    SaleCount: number
+	CustomerID: string;
+	CustomerName: string;
+	TotalSpent: number;
+	SaleCount: number;
 }
 
 // 1. Low stock report
 export async function getLowStockReport(): Promise<LowStockReportItem[]> {
-    await checkReportPermission("reports:read_low_stock")
-    return getLowStockReportCached()
+	await checkReportPermission("reports:read_low_stock");
+	return getLowStockReportCached();
 }
 
 async function getLowStockReportCached(): Promise<LowStockReportItem[]> {
-    "use cache"
-    cacheTag("reports", "low-stock-report")
-    cacheLife("minutes")
+	"use cache";
+	cacheTag("reports", "low-stock-report");
+	cacheLife("minutes");
 
-    const products = await prisma.product.findMany({
-        where: {
-            stockQty: {
-                lte: prisma.product.fields.minStock,
-            },
-            isArchived: false,
-        },
-        orderBy: {
-            stockQty: "asc",
-        },
-        select: {
-            id: true,
-            sku: true,
-            name: true,
-            stockQty: true,
-            minStock: true,
-        },
-    })
-    return products
+	const products = await prisma.product.findMany({
+		where: {
+			stockQty: {
+				lte: prisma.product.fields.minStock,
+			},
+			isArchived: false,
+		},
+		orderBy: {
+			stockQty: "asc",
+		},
+		select: {
+			id: true,
+			sku: true,
+			name: true,
+			stockQty: true,
+			minStock: true,
+		},
+	});
+	return products;
 }
 
 // 2. Inventory valuation
 export async function getInventoryValuation(): Promise<ValuationReport> {
-    await checkReportPermission("reports:read_valuation")
-    return getInventoryValuationCached()
+	await checkReportPermission("reports:read_valuation");
+	return getInventoryValuationCached();
 }
 
 async function getInventoryValuationCached(): Promise<ValuationReport> {
-    "use cache"
-    cacheTag("reports", "inventory-valuation")
-    cacheLife("minutes")
+	"use cache";
+	cacheTag("reports", "inventory-valuation");
+	cacheLife("minutes");
 
-    const products = await prisma.product.findMany({
-        where: {
-            isArchived: false,
-        },
-        select: {
-            id: true,
-            name: true,
-            sku: true,
-            stockQty: true,
-            costPrice: true,
-            salePrice: true,
-        },
-    })
+	const products = await prisma.product.findMany({
+		where: {
+			isArchived: false,
+		},
+		select: {
+			id: true,
+			name: true,
+			sku: true,
+			stockQty: true,
+			costPrice: true,
+			salePrice: true,
+		},
+	});
 
-    const valuation = products.reduce(
-        (acc, product) => {
-            const qty = product.stockQty
-            const cost = Number(product.costPrice)
-            const sale = Number(product.salePrice)
+	const valuation = products.reduce(
+		(acc, product) => {
+			const qty = product.stockQty;
+			const cost = Number(product.costPrice);
+			const sale = Number(product.salePrice);
 
-            return {
-                totalCost: acc.totalCost + qty * cost,
-                totalRetail: acc.totalRetail + qty * sale,
-                itemCount: acc.itemCount + qty,
-            }
-        },
-        { totalCost: 0, totalRetail: 0, itemCount: 0 },
-    )
+			return {
+				totalCost: acc.totalCost + qty * cost,
+				totalRetail: acc.totalRetail + qty * sale,
+				itemCount: acc.itemCount + qty,
+			};
+		},
+		{ totalCost: 0, totalRetail: 0, itemCount: 0 },
+	);
 
-    return {
-        params: valuation,
-        products: products.map((p) => ({
-            ...p,
-            costPrice: Number(p.costPrice),
-            salePrice: Number(p.salePrice),
-        })),
-    }
+	return {
+		params: valuation,
+		products: products.map((p) => ({
+			...p,
+			costPrice: Number(p.costPrice),
+			salePrice: Number(p.salePrice),
+		})),
+	};
 }
 
 // 3. Sales History
 export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
-    await checkReportPermission("reports:read_history")
-    return getSalesHistoryCached()
+	await checkReportPermission("reports:read_history");
+	return getSalesHistoryCached();
 }
 
 async function getSalesHistoryCached(): Promise<SalesHistoryItem[]> {
-    "use cache"
-    cacheTag("reports", "sales-history")
-    cacheLife("minutes")
+	"use cache";
+	cacheTag("reports", "sales-history");
+	cacheLife("minutes");
 
-    const include = {
-        user: {
-            select: {
-                name: true,
-                email: true,
-            },
-        },
-        items: {
-            include: {
-                product: {
-                    select: {
-                        name: true,
-                    },
-                },
-            },
-        },
-    } satisfies Prisma.TransactionInclude
+	const include = {
+		user: {
+			select: {
+				name: true,
+				email: true,
+			},
+		},
+		items: {
+			include: {
+				product: {
+					select: {
+						name: true,
+					},
+				},
+			},
+		},
+	} satisfies Prisma.TransactionInclude;
 
-    const transactions = await prisma.transaction.findMany({
-        where: {
-            type: "SALE",
-        },
-        include,
-        orderBy: {
-            date: "desc",
-        },
-        take: 50,
-    })
+	const transactions = await prisma.transaction.findMany({
+		where: {
+			type: "SALE",
+		},
+		include,
+		orderBy: {
+			date: "desc",
+		},
+		take: 50,
+	});
 
-    interface TransactionWithRelations {
-        id: string
-        date: Date
-        total: Prisma.Decimal
-        user: { name: string | null; email: string | null } | null
-        items: {
-            id: string
-            quantity: number
-            product: { name: string } | null
-        }[]
-    }
+	interface TransactionWithRelations {
+		id: string;
+		date: Date;
+		total: Prisma.Decimal;
+		user: { name: string | null; email: string | null } | null;
+		items: {
+			id: string;
+			quantity: number;
+			product: { name: string } | null;
+		}[];
+	}
 
-    const safeTransactions = transactions as unknown as TransactionWithRelations[]
+	const safeTransactions =
+		transactions as unknown as TransactionWithRelations[];
 
-    return safeTransactions.map((t) => ({
-        id: t.id,
-        date: t.date,
-        total: Number(t.total),
-        user: t.user,
-        items: t.items.map((i) => ({
-            id: i.id,
-            quantity: i.quantity,
-            product: {
-                name: i.product?.name || "Unknown",
-            },
-        })),
-    }))
+	return safeTransactions.map((t) => ({
+		id: t.id,
+		date: t.date,
+		total: Number(t.total),
+		user: t.user,
+		items: t.items.map((i) => ({
+			id: i.id,
+			quantity: i.quantity,
+			product: {
+				name: i.product?.name || "Unknown",
+			},
+		})),
+	}));
 }
 
 // 4. Profit loss report
-export async function getProfitLossReport(startDate?: Date, endDate?: Date): Promise<ProfitLossSummary> {
-    await checkReportPermission("reports:read_history")
-    return getProfitLossReportCached(startDate, endDate)
+export async function getProfitLossReport(
+	startDate?: Date,
+	endDate?: Date,
+): Promise<ProfitLossSummary> {
+	await checkReportPermission("reports:read_history");
+	return getProfitLossReportCached(startDate, endDate);
 }
 
-async function getProfitLossReportCached(startDate?: Date, endDate?: Date): Promise<ProfitLossSummary> {
-    "use cache"
-    cacheTag("reports", "profit-loss")
-    cacheLife("minutes")
+async function getProfitLossReportCached(
+	startDate?: Date,
+	endDate?: Date,
+): Promise<ProfitLossSummary> {
+	"use cache";
+	cacheTag("reports", "profit-loss");
+	cacheLife("minutes");
 
-    const where: Prisma.TransactionWhereInput = {
-        type: "SALE",
-        ...(startDate && endDate
-            ? {
-                  date: {
-                      gte: startDate,
-                      lte: endDate,
-                  },
-              }
-            : {}),
-    }
+	const where: Prisma.TransactionWhereInput = {
+		type: "SALE",
+		...(startDate && endDate
+			? {
+					date: {
+						gte: startDate,
+						lte: endDate,
+					},
+				}
+			: {}),
+	};
 
-    const sales = await prisma.transaction.findMany({
-        where,
-        include: {
-            items: {
-                include: {
-                    product: { select: { costPrice: true } },
-                },
-            },
-        },
-    })
+	const sales = await prisma.transaction.findMany({
+		where,
+		include: {
+			items: {
+				include: {
+					product: { select: { costPrice: true } },
+				},
+			},
+		},
+	});
 
-    let totalRevenue = 0
-    let totalCostOfGoodsSold = 0
+	let totalRevenue = 0;
+	let totalCostOfGoodsSold = 0;
 
-    for (const sale of sales) {
-        totalRevenue += Number(sale.total)
+	for (const sale of sales) {
+		totalRevenue += Number(sale.total);
 
-        for (const item of sale.items) {
-            const itemCost = Number(item.product.costPrice)
-            totalCostOfGoodsSold += itemCost * item.quantity
-        }
-    }
+		for (const item of sale.items) {
+			const itemCost = Number(item.product.costPrice);
+			totalCostOfGoodsSold += itemCost * item.quantity;
+		}
+	}
 
-    return {
-        totalRevenue,
-        totalCostOfGoodsSold,
-        grossProfit: totalRevenue - totalCostOfGoodsSold,
-        transactionCount: sales.length,
-    }
+	return {
+		totalRevenue,
+		totalCostOfGoodsSold,
+		grossProfit: totalRevenue - totalCostOfGoodsSold,
+		transactionCount: sales.length,
+	};
 }
 
 // 5. Top selling products
-export async function getTopSellingProducts(limit = 10): Promise<TopProductItem[]> {
-    await checkReportPermission("reports:read_history")
-    return getTopSellingProductsCached(limit)
+export async function getTopSellingProducts(
+	limit = 10,
+): Promise<TopProductItem[]> {
+	await checkReportPermission("reports:read_history");
+	return getTopSellingProductsCached(limit);
 }
 
-async function getTopSellingProductsCached(limit = 10): Promise<TopProductItem[]> {
-    "use cache"
-    cacheTag("reports", "top-selling")
-    cacheLife("minutes")
+async function getTopSellingProductsCached(
+	limit = 10,
+): Promise<TopProductItem[]> {
+	"use cache";
+	cacheTag("reports", "top-selling");
+	cacheLife("minutes");
 
-    const items = await prisma.transactionItem.findMany({
-        where: {
-            transaction: { type: "SALE" },
-        },
-        select: {
-            productId: true,
-            quantity: true,
-            price: true,
-            discount: true,
-            product: {
-                select: {
-                    name: true,
-                    sku: true,
-                },
-            },
-        },
-    })
+	const items = await prisma.transactionItem.findMany({
+		where: {
+			transaction: { type: "SALE" },
+		},
+		select: {
+			productId: true,
+			quantity: true,
+			price: true,
+			discount: true,
+			product: {
+				select: {
+					name: true,
+					sku: true,
+				},
+			},
+		},
+	});
 
-    const productMap = new Map<string, TopProductItem>()
+	const productMap = new Map<string, TopProductItem>();
 
-    for (const item of items) {
-        const existing = productMap.get(item.productId)
-        const lineRevenue = item.quantity * Number(item.price) - Number(item.discount || 0)
+	for (const item of items) {
+		const existing = productMap.get(item.productId);
+		const lineRevenue =
+			item.quantity * Number(item.price) - Number(item.discount || 0);
 
-        if (existing) {
-            existing.quantitySold += item.quantity
-            existing.revenue += lineRevenue
-        } else {
-            productMap.set(item.productId, {
-                id: item.productId,
-                name: item.product?.name || "Unknown",
-                sku: item.product?.sku || "-",
-                quantitySold: item.quantity,
-                revenue: lineRevenue,
-            })
-        }
-    }
+		if (existing) {
+			existing.quantitySold += item.quantity;
+			existing.revenue += lineRevenue;
+		} else {
+			productMap.set(item.productId, {
+				id: item.productId,
+				name: item.product?.name || "Unknown",
+				sku: item.product?.sku || "-",
+				quantitySold: item.quantity,
+				revenue: lineRevenue,
+			});
+		}
+	}
 
-    return Array.from(productMap.values())
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, limit)
+	return Array.from(productMap.values())
+		.sort((a, b) => b.revenue - a.revenue)
+		.slice(0, limit);
 }
 
 // 6. Refresh report data
 export async function refreshReportData() {
-    const session = await auth()
-    if (!session?.user) {
-        throw new Error("Unauthorized")
-    }
-    // Any report permission can refresh
-    const permissions = session.user.permissions || []
-    const canRefresh = permissions.some((p) =>
-        ["reports:read_low_stock", "reports:read_valuation", "reports:read_history"].includes(p),
-    )
-    if (!canRefresh) {
-        throw new Error("Forbidden")
-    }
-    revalidateTag("reports", "max")
+	const session = await auth();
+	if (!session?.user) {
+		throw new Error("Unauthorized");
+	}
+	// Any report permission can refresh
+	const permissions = session.user.permissions || [];
+	const canRefresh = permissions.some((p) =>
+		[
+			"reports:read_low_stock",
+			"reports:read_valuation",
+			"reports:read_history",
+		].includes(p),
+	);
+	if (!canRefresh) {
+		throw new Error("Forbidden");
+	}
+	revalidateTag("reports", "max");
 }
 
 // 7. Supplier stats
 export async function getSupplierStats(limit = 10): Promise<SupplierStats[]> {
-    await checkReportPermission("reports:read_history")
-    return getSupplierStatsCached(limit)
+	await checkReportPermission("reports:read_history");
+	return getSupplierStatsCached(limit);
 }
 
 async function getSupplierStatsCached(limit = 10): Promise<SupplierStats[]> {
-    "use cache"
-    cacheTag("reports", "suppliers")
-    cacheLife("minutes")
+	"use cache";
+	cacheTag("reports", "suppliers");
+	cacheLife("minutes");
 
-    const grouped = await prisma.transaction.groupBy({
-        by: ["supplierId"],
-        where: {
-            type: "PURCHASE",
-            supplierId: { not: null },
-        },
-        _sum: {
-            total: true,
-        },
-        _count: {
-            id: true,
-        },
-        orderBy: {
-            _sum: {
-                total: "desc",
-            },
-        },
-        take: limit,
-    })
+	const grouped = await prisma.transaction.groupBy({
+		by: ["supplierId"],
+		where: {
+			type: "PURCHASE",
+			supplierId: { not: null },
+		},
+		_sum: {
+			total: true,
+		},
+		_count: {
+			id: true,
+		},
+		orderBy: {
+			_sum: {
+				total: "desc",
+			},
+		},
+		take: limit,
+	});
 
-    const supplierIds = grouped.map((g) => g.supplierId).filter((id): id is string => id !== null)
+	const supplierIds = grouped
+		.map((g) => g.supplierId)
+		.filter((id): id is string => id !== null);
 
-    const suppliers = await prisma.supplier.findMany({
-        where: {
-            id: { in: supplierIds },
-        },
-        select: {
-            id: true,
-            name: true,
-        },
-    })
+	const suppliers = await prisma.supplier.findMany({
+		where: {
+			id: { in: supplierIds },
+		},
+		select: {
+			id: true,
+			name: true,
+		},
+	});
 
-    const supplierMap = new Map(suppliers.map((s) => [s.id, s.name]))
+	const supplierMap = new Map(suppliers.map((s) => [s.id, s.name]));
 
-    return grouped.reduce<SupplierStats[]>((acc, g) => {
-        if (g.supplierId) {
-            acc.push({
-                id: g.supplierId,
-                name: supplierMap.get(g.supplierId) || "Unknown",
-                totalPurchased: Number(g._sum.total || 0),
-                transactionCount: g._count.id,
-            })
-        }
-        return acc
-    }, [])
+	return grouped.reduce<SupplierStats[]>((acc, g) => {
+		if (g.supplierId) {
+			acc.push({
+				id: g.supplierId,
+				name: supplierMap.get(g.supplierId) || "Unknown",
+				totalPurchased: Number(g._sum.total || 0),
+				transactionCount: g._count.id,
+			});
+		}
+		return acc;
+	}, []);
 }
 
 // 8. Customer stats
 export async function getCustomerStats(limit = 10): Promise<CustomerStats[]> {
-    await checkReportPermission("reports:read_history")
-    return getCustomerStatsCached(limit)
+	await checkReportPermission("reports:read_history");
+	return getCustomerStatsCached(limit);
 }
 
 async function getCustomerStatsCached(limit = 10): Promise<CustomerStats[]> {
-    "use cache"
-    cacheTag("reports", "customers")
-    cacheLife("minutes")
+	"use cache";
+	cacheTag("reports", "customers");
+	cacheLife("minutes");
 
-    const grouped = await prisma.transaction.groupBy({
-        by: ["customerId"],
-        where: {
-            type: "SALE",
-            customerId: { not: null },
-        },
-        _sum: {
-            total: true,
-        },
-        _count: {
-            id: true,
-        },
-        orderBy: {
-            _sum: {
-                total: "desc",
-            },
-        },
-        take: limit,
-    })
+	const grouped = await prisma.transaction.groupBy({
+		by: ["customerId"],
+		where: {
+			type: "SALE",
+			customerId: { not: null },
+		},
+		_sum: {
+			total: true,
+		},
+		_count: {
+			id: true,
+		},
+		orderBy: {
+			_sum: {
+				total: "desc",
+			},
+		},
+		take: limit,
+	});
 
-    const customerIds = grouped.map((g) => g.customerId).filter((id): id is string => id !== null)
+	const customerIds = grouped
+		.map((g) => g.customerId)
+		.filter((id): id is string => id !== null);
 
-    const customers = await prisma.customer.findMany({
-        where: {
-            id: { in: customerIds },
-        },
-        select: {
-            id: true,
-            name: true,
-        },
-    })
+	const customers = await prisma.customer.findMany({
+		where: {
+			id: { in: customerIds },
+		},
+		select: {
+			id: true,
+			name: true,
+		},
+	});
 
-    const customerMap = new Map(customers.map((c) => [c.id, c.name]))
+	const customerMap = new Map(customers.map((c) => [c.id, c.name]));
 
-    return grouped.reduce<CustomerStats[]>((acc, g) => {
-        if (g.customerId) {
-            acc.push({
-                id: g.customerId,
-                name: customerMap.get(g.customerId) || "Unknown",
-                totalSpent: Number(g._sum.total || 0),
-                visitCount: g._count.id,
-            })
-        }
-        return acc
-    }, [])
+	return grouped.reduce<CustomerStats[]>((acc, g) => {
+		if (g.customerId) {
+			acc.push({
+				id: g.customerId,
+				name: customerMap.get(g.customerId) || "Unknown",
+				totalSpent: Number(g._sum.total || 0),
+				visitCount: g._count.id,
+			});
+		}
+		return acc;
+	}, []);
 }
 
 // 9. Purchase history
 export async function getPurchaseHistory(): Promise<SalesHistoryItem[]> {
-    await checkReportPermission("reports:read_history")
-    return getPurchaseHistoryCached()
+	await checkReportPermission("reports:read_history");
+	return getPurchaseHistoryCached();
 }
 
 async function getPurchaseHistoryCached(): Promise<SalesHistoryItem[]> {
-    "use cache"
-    cacheTag("reports", "purchase-history")
-    cacheLife("minutes")
+	"use cache";
+	cacheTag("reports", "purchase-history");
+	cacheLife("minutes");
 
-    const transactions = await prisma.transaction.findMany({
-        where: { type: "PURCHASE" },
-        include: {
-            user: { select: { name: true, email: true } },
-            items: { include: { product: { select: { name: true } } } },
-            supplier: true,
-        },
-        orderBy: { date: "desc" },
-        take: 50,
-    })
+	const transactions = await prisma.transaction.findMany({
+		where: { type: "PURCHASE" },
+		include: {
+			user: { select: { name: true, email: true } },
+			items: { include: { product: { select: { name: true } } } },
+			supplier: true,
+		},
+		orderBy: { date: "desc" },
+		take: 50,
+	});
 
-    return transactions.map((t) => ({
-        id: t.id,
-        date: t.date,
-        total: Number(t.total),
-        user: t.user,
-        items: t.items.map((i) => ({
-            id: i.id,
-            quantity: i.quantity,
-            product: {
-                name: i.product?.name || "Unknown",
-            },
-        })),
-    }))
+	return transactions.map((t) => ({
+		id: t.id,
+		date: t.date,
+		total: Number(t.total),
+		user: t.user,
+		items: t.items.map((i) => ({
+			id: i.id,
+			quantity: i.quantity,
+			product: {
+				name: i.product?.name || "Unknown",
+			},
+		})),
+	}));
 }
 
 // 10. Purchase summary
 export async function getPurchaseSummary(): Promise<PurchaseSummary> {
-    await checkReportPermission("reports:read_history")
-    return getPurchaseSummaryCached()
+	await checkReportPermission("reports:read_history");
+	return getPurchaseSummaryCached();
 }
 
 async function getPurchaseSummaryCached(): Promise<PurchaseSummary> {
-    "use cache"
-    cacheTag("reports", "purchases-summary")
-    cacheLife("minutes")
+	"use cache";
+	cacheTag("reports", "purchases-summary");
+	cacheLife("minutes");
 
-    const aggregate = await prisma.transaction.aggregate({
-        where: { type: "PURCHASE" },
-        _sum: { total: true },
-        _count: { id: true },
-    })
+	const aggregate = await prisma.transaction.aggregate({
+		where: { type: "PURCHASE" },
+		_sum: { total: true },
+		_count: { id: true },
+	});
 
-    const totalSpend = Number(aggregate._sum.total || 0)
-    const count = aggregate._count.id
+	const totalSpend = Number(aggregate._sum.total || 0);
+	const count = aggregate._count.id;
 
-    return {
-        totalSpend,
-        count,
-        avgValue: count > 0 ? totalSpend / count : 0,
-    }
+	return {
+		totalSpend,
+		count,
+		avgValue: count > 0 ? totalSpend / count : 0,
+	};
 }
 
 // 11. Supplier summary
 export async function getSupplierSummary(): Promise<EntitySummary> {
-    await checkReportPermission("reports:read_history")
-    return getSupplierSummaryCached()
+	await checkReportPermission("reports:read_history");
+	return getSupplierSummaryCached();
 }
 
 async function getSupplierSummaryCached(): Promise<EntitySummary> {
-    "use cache"
-    cacheTag("reports", "suppliers-summary")
-    cacheLife("minutes")
+	"use cache";
+	cacheTag("reports", "suppliers-summary");
+	cacheLife("minutes");
 
-    const [totalCount, activeCount, topSupplier] = await Promise.all([
-        prisma.supplier.count(),
-        prisma.transaction
-            .groupBy({
-                by: ["supplierId"],
-                where: { type: "PURCHASE", supplierId: { not: null } },
-            })
-            .then((res) => res.length),
-        prisma.transaction.groupBy({
-            by: ["supplierId"],
-            where: { type: "PURCHASE", supplierId: { not: null } },
-            _sum: { total: true },
-            orderBy: { _sum: { total: "desc" } },
-            take: 1,
-        }),
-    ])
+	const [totalCount, activeCount, topSupplier] = await Promise.all([
+		prisma.supplier.count(),
+		prisma.transaction
+			.groupBy({
+				by: ["supplierId"],
+				where: { type: "PURCHASE", supplierId: { not: null } },
+			})
+			.then((res) => res.length),
+		prisma.transaction.groupBy({
+			by: ["supplierId"],
+			where: { type: "PURCHASE", supplierId: { not: null } },
+			_sum: { total: true },
+			orderBy: { _sum: { total: "desc" } },
+			take: 1,
+		}),
+	]);
 
-    let topName = "-"
-    if (topSupplier.length > 0 && topSupplier[0].supplierId) {
-        const s = await prisma.supplier.findUnique({
-            where: { id: topSupplier[0].supplierId },
-            select: { name: true },
-        })
-        topName = s?.name || "Unknown"
-    }
+	let topName = "-";
+	if (topSupplier.length > 0 && topSupplier[0].supplierId) {
+		const s = await prisma.supplier.findUnique({
+			where: { id: topSupplier[0].supplierId },
+			select: { name: true },
+		});
+		topName = s?.name || "Unknown";
+	}
 
-    return {
-        totalCount,
-        activeCount,
-        topPerformerName: topName,
-        topPerformerValue: Number(topSupplier[0]?._sum.total || 0),
-    }
+	return {
+		totalCount,
+		activeCount,
+		topPerformerName: topName,
+		topPerformerValue: Number(topSupplier[0]?._sum.total || 0),
+	};
 }
 
 // 12. Customer summary
 export async function getCustomerSummary(): Promise<EntitySummary> {
-    await checkReportPermission("reports:read_history")
-    return getCustomerSummaryCached()
+	await checkReportPermission("reports:read_history");
+	return getCustomerSummaryCached();
 }
 
 async function getCustomerSummaryCached(): Promise<EntitySummary> {
-    "use cache"
-    cacheTag("reports", "customers-summary")
-    cacheLife("minutes")
+	"use cache";
+	cacheTag("reports", "customers-summary");
+	cacheLife("minutes");
 
-    const [totalCount, activeCount, topCustomer] = await Promise.all([
-        prisma.customer.count(),
-        prisma.transaction
-            .groupBy({
-                by: ["customerId"],
-                where: { type: "SALE", customerId: { not: null } },
-            })
-            .then((res) => res.length),
-        prisma.transaction.groupBy({
-            by: ["customerId"],
-            where: { type: "SALE", customerId: { not: null } },
-            _sum: { total: true },
-            orderBy: { _sum: { total: "desc" } },
-            take: 1,
-        }),
-    ])
+	const [totalCount, activeCount, topCustomer] = await Promise.all([
+		prisma.customer.count(),
+		prisma.transaction
+			.groupBy({
+				by: ["customerId"],
+				where: { type: "SALE", customerId: { not: null } },
+			})
+			.then((res) => res.length),
+		prisma.transaction.groupBy({
+			by: ["customerId"],
+			where: { type: "SALE", customerId: { not: null } },
+			_sum: { total: true },
+			orderBy: { _sum: { total: "desc" } },
+			take: 1,
+		}),
+	]);
 
-    let topName = "-"
-    if (topCustomer.length > 0 && topCustomer[0].customerId) {
-        const c = await prisma.customer.findUnique({
-            where: { id: topCustomer[0].customerId },
-            select: { name: true },
-        })
-        topName = c?.name || "Unknown"
-    }
+	let topName = "-";
+	if (topCustomer.length > 0 && topCustomer[0].customerId) {
+		const c = await prisma.customer.findUnique({
+			where: { id: topCustomer[0].customerId },
+			select: { name: true },
+		});
+		topName = c?.name || "Unknown";
+	}
 
-    return {
-        totalCount,
-        activeCount,
-        topPerformerName: topName,
-        topPerformerValue: Number(topCustomer[0]?._sum.total || 0),
-    }
+	return {
+		totalCount,
+		activeCount,
+		topPerformerName: topName,
+		topPerformerValue: Number(topCustomer[0]?._sum.total || 0),
+	};
 }
 
 // Export specific actions
 export async function getValuationReportForExport() {
-    await checkReportPermission("reports:read_valuation")
-    const valuation = await getInventoryValuation()
-    return valuation.products.map((p) => ({
-        SKU: p.sku,
-        Name: p.name,
-        StockQty: p.stockQty,
-        CostPrice: p.costPrice,
-        SalePrice: p.salePrice,
-        TotalCostValue: p.stockQty * p.costPrice,
-        TotalRetailValue: p.stockQty * p.salePrice,
-    }))
+	await checkReportPermission("reports:read_valuation");
+	const valuation = await getInventoryValuation();
+	return valuation.products.map((p) => ({
+		SKU: p.sku,
+		Name: p.name,
+		StockQty: p.stockQty,
+		CostPrice: p.costPrice,
+		SalePrice: p.salePrice,
+		TotalCostValue: p.stockQty * p.costPrice,
+		TotalRetailValue: p.stockQty * p.salePrice,
+	}));
 }
 
 export async function getSalesHistoryForExport() {
-    await checkReportPermission("reports:read_history")
-    const transactions = await prisma.transaction.findMany({
-        where: { type: "SALE" },
-        include: {
-            user: { select: { name: true, email: true } },
-            items: { include: { product: { select: { name: true, sku: true } } } },
-            customer: true,
-        },
-        orderBy: { date: "desc" },
-    })
+	await checkReportPermission("reports:read_history");
+	const transactions = await prisma.transaction.findMany({
+		where: { type: "SALE" },
+		include: {
+			user: { select: { name: true, email: true } },
+			items: { include: { product: { select: { name: true, sku: true } } } },
+			customer: true,
+		},
+		orderBy: { date: "desc" },
+	});
 
-    return transactions.map((t) => {
-        const itemsList = t.items
-            .map((i) => `${i.product?.name || "Unknown"} (SKU: ${i.product?.sku || "N/A"}) x${i.quantity}`)
-            .join("; ")
-        return {
-            ID: t.id,
-            Date: t.date,
-            Total: Number(t.total),
-            User: t.user?.name || "Unknown",
-            Customer: t.customer?.name || "Walk-in Customer",
-            Items: itemsList,
-        }
-    })
+	return transactions.map((t) => {
+		const itemsList = t.items
+			.map(
+				(i) =>
+					`${i.product?.name || "Unknown"} (SKU: ${i.product?.sku || "N/A"}) x${i.quantity}`,
+			)
+			.join("; ");
+		return {
+			ID: t.id,
+			Date: t.date,
+			Total: Number(t.total),
+			User: t.user?.name || "Unknown",
+			Customer: t.customer?.name || "Walk-in Customer",
+			Items: itemsList,
+		};
+	});
 }
 
 export async function getPurchaseHistoryForExport() {
-    await checkReportPermission("reports:read_history")
-    const transactions = await prisma.transaction.findMany({
-        where: { type: "PURCHASE" },
-        include: {
-            user: { select: { name: true, email: true } },
-            items: { include: { product: { select: { name: true, sku: true } } } },
-            supplier: true,
-        },
-        orderBy: { date: "desc" },
-    })
+	await checkReportPermission("reports:read_history");
+	const transactions = await prisma.transaction.findMany({
+		where: { type: "PURCHASE" },
+		include: {
+			user: { select: { name: true, email: true } },
+			items: { include: { product: { select: { name: true, sku: true } } } },
+			supplier: true,
+		},
+		orderBy: { date: "desc" },
+	});
 
-    return transactions.map((t) => {
-        const itemsList = t.items
-            .map((i) => `${i.product?.name || "Unknown"} (SKU: ${i.product?.sku || "N/A"}) x${i.quantity}`)
-            .join("; ")
-        return {
-            ID: t.id,
-            Date: t.date,
-            Total: Number(t.total),
-            User: t.user?.name || "Unknown",
-            Supplier: t.supplier?.name || "Unknown Supplier",
-            Items: itemsList,
-        }
-    })
+	return transactions.map((t) => {
+		const itemsList = t.items
+			.map(
+				(i) =>
+					`${i.product?.name || "Unknown"} (SKU: ${i.product?.sku || "N/A"}) x${i.quantity}`,
+			)
+			.join("; ");
+		return {
+			ID: t.id,
+			Date: t.date,
+			Total: Number(t.total),
+			User: t.user?.name || "Unknown",
+			Supplier: t.supplier?.name || "Unknown Supplier",
+			Items: itemsList,
+		};
+	});
 }
 
-export async function getSupplierStatsForExport(): Promise<ExportedSupplierStats[]> {
-    await checkReportPermission("reports:read_history")
-    const grouped = await prisma.transaction.groupBy({
-        by: ["supplierId"],
-        where: {
-            type: "PURCHASE",
-            supplierId: { not: null },
-        },
-        _sum: {
-            total: true,
-        },
-        _count: {
-            id: true,
-        },
-        orderBy: {
-            _sum: {
-                total: "desc",
-            },
-        },
-    })
+export async function getSupplierStatsForExport(): Promise<
+	ExportedSupplierStats[]
+> {
+	await checkReportPermission("reports:read_history");
+	const grouped = await prisma.transaction.groupBy({
+		by: ["supplierId"],
+		where: {
+			type: "PURCHASE",
+			supplierId: { not: null },
+		},
+		_sum: {
+			total: true,
+		},
+		_count: {
+			id: true,
+		},
+		orderBy: {
+			_sum: {
+				total: "desc",
+			},
+		},
+	});
 
-    const supplierIds = grouped.map((g) => g.supplierId).filter((id): id is string => id !== null)
+	const supplierIds = grouped
+		.map((g) => g.supplierId)
+		.filter((id): id is string => id !== null);
 
-    const suppliers = await prisma.supplier.findMany({
-        where: {
-            id: { in: supplierIds },
-        },
-        select: {
-            id: true,
-            name: true,
-        },
-    })
+	const suppliers = await prisma.supplier.findMany({
+		where: {
+			id: { in: supplierIds },
+		},
+		select: {
+			id: true,
+			name: true,
+		},
+	});
 
-    const supplierMap = new Map(suppliers.map((s) => [s.id, s.name]))
+	const supplierMap = new Map(suppliers.map((s) => [s.id, s.name]));
 
-    return grouped.reduce<ExportedSupplierStats[]>((acc, g) => {
-        if (g.supplierId) {
-            acc.push({
-                SupplierID: g.supplierId,
-                SupplierName: supplierMap.get(g.supplierId) || "Unknown",
-                TotalPurchased: Number(g._sum.total || 0),
-                PurchaseCount: g._count.id,
-            })
-        }
-        return acc
-    }, [])
+	return grouped.reduce<ExportedSupplierStats[]>((acc, g) => {
+		if (g.supplierId) {
+			acc.push({
+				SupplierID: g.supplierId,
+				SupplierName: supplierMap.get(g.supplierId) || "Unknown",
+				TotalPurchased: Number(g._sum.total || 0),
+				PurchaseCount: g._count.id,
+			});
+		}
+		return acc;
+	}, []);
 }
 
-export async function getCustomerStatsForExport(): Promise<ExportedCustomerStats[]> {
-    await checkReportPermission("reports:read_history")
-    const grouped = await prisma.transaction.groupBy({
-        by: ["customerId"],
-        where: {
-            type: "SALE",
-            customerId: { not: null },
-        },
-        _sum: {
-            total: true,
-        },
-        _count: {
-            id: true,
-        },
-        orderBy: {
-            _sum: {
-                total: "desc",
-            },
-        },
-    })
+export async function getCustomerStatsForExport(): Promise<
+	ExportedCustomerStats[]
+> {
+	await checkReportPermission("reports:read_history");
+	const grouped = await prisma.transaction.groupBy({
+		by: ["customerId"],
+		where: {
+			type: "SALE",
+			customerId: { not: null },
+		},
+		_sum: {
+			total: true,
+		},
+		_count: {
+			id: true,
+		},
+		orderBy: {
+			_sum: {
+				total: "desc",
+			},
+		},
+	});
 
-    const customerIds = grouped.map((g) => g.customerId).filter((id): id is string => id !== null)
+	const customerIds = grouped
+		.map((g) => g.customerId)
+		.filter((id): id is string => id !== null);
 
-    const customers = await prisma.customer.findMany({
-        where: {
-            id: { in: customerIds },
-        },
-        select: {
-            id: true,
-            name: true,
-        },
-    })
+	const customers = await prisma.customer.findMany({
+		where: {
+			id: { in: customerIds },
+		},
+		select: {
+			id: true,
+			name: true,
+		},
+	});
 
-    const customerMap = new Map(customers.map((c) => [c.id, c.name]))
+	const customerMap = new Map(customers.map((c) => [c.id, c.name]));
 
-    return grouped.reduce<ExportedCustomerStats[]>((acc, g) => {
-        if (g.customerId) {
-            acc.push({
-                CustomerID: g.customerId,
-                CustomerName: customerMap.get(g.customerId) || "Unknown",
-                TotalSpent: Number(g._sum.total || 0),
-                SaleCount: g._count.id,
-            })
-        }
-        return acc
-    }, [])
+	return grouped.reduce<ExportedCustomerStats[]>((acc, g) => {
+		if (g.customerId) {
+			acc.push({
+				CustomerID: g.customerId,
+				CustomerName: customerMap.get(g.customerId) || "Unknown",
+				TotalSpent: Number(g._sum.total || 0),
+				SaleCount: g._count.id,
+			});
+		}
+		return acc;
+	}, []);
 }
