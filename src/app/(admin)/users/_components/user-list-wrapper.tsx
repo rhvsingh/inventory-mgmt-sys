@@ -3,10 +3,11 @@ import { UserList } from "./user-list"
 
 interface UserListWrapperProps {
     page: number
+    roles: { id: string; name: string }[]
 }
 
-export async function UserListWrapper({ page }: UserListWrapperProps) {
+export async function UserListWrapper({ page, roles }: UserListWrapperProps) {
     const { data: users, metadata } = await getUsers(page)
 
-    return <UserList users={users} metadata={metadata} />
+    return <UserList users={users} roles={roles} metadata={metadata} />
 }

@@ -28,7 +28,7 @@ function SubmitButton() {
     )
 }
 
-export function CreateUserDialog() {
+export function CreateUserDialog({ roles = [] }: { roles?: { id: string; name: string }[] }) {
     const [open, setOpen] = useState(false)
 
     async function clientAction(formData: FormData) {
@@ -46,6 +46,9 @@ export function CreateUserDialog() {
         }
     }
 
+    // Default selection is Clerk role if present
+    const clerkRole = roles.find((r) => r.name === "Clerk")
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -59,7 +62,7 @@ export function CreateUserDialog() {
                     <DialogHeader>
                         <DialogTitle>Create User</DialogTitle>
                         <DialogDescription>
-                            Add a new user to the system. They will default to Clerk role.
+                            Add a new user to the system.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -89,17 +92,19 @@ export function CreateUserDialog() {
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="role" className="text-right">
+                            <Label htmlFor="roleId" className="text-right">
                                 Role
                             </Label>
-                            <Select name="role" defaultValue="CLERK">
+                            <Select name="roleId" defaultValue={clerkRole?.id}>
                                 <SelectTrigger className="col-span-3">
                                     <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="CLERK">Clerk</SelectItem>
-                                    <SelectItem value="MANAGER">Manager</SelectItem>
-                                    <SelectItem value="ADMIN">Admin</SelectItem>
+                                    {roles.map((role) => (
+                                        <SelectItem key={role.id} value={role.id}>
+                                            {role.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>

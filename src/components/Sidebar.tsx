@@ -12,10 +12,8 @@ const navItems = [
     { href: "/products", icon: Package, label: "Products" },
     { href: "/sales", icon: ShoppingCart, label: "Sales" },
     { href: "/purchases", icon: Truck, label: "Purchases" },
-    { href: "/suppliers", icon: Users, label: "Suppliers" },
-    { href: "/customers", icon: Users, label: "Customers" },
-    { href: "/users", icon: Users, label: "Users" }, // Admin only usually
     { href: "/reports", icon: BarChart3, label: "Reports" },
+    { href: "/users", icon: Users, label: "Users" }, // Admin only usually
 ]
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -24,27 +22,34 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
         name?: string | null
         email?: string | null
         role?: string
+        permissions?: string[]
     }
 }
 
 export function Sidebar({ className, onClose, user }: SidebarProps) {
     const pathname = usePathname()
 
-    // Filter nav items based on role
+    // Filter nav items based on dynamic permissions (RBAC)
     const filteredNavItems = navItems.filter((item) => {
-        const role = user.role
+        const permissions = user.permissions || []
         if (item.href === "/users") {
-            return role === "ADMIN"
+            return permissions.includes("users:read")
         }
         if (item.href === "/reports") {
-            return role === "ADMIN" || role === "MANAGER"
+            return permissions.includes("reports:valuation") || permissions.includes("reports:history")
+        }
+        if (item.href === "/products") {
+            return permissions.includes("products:read")
+        }
+        if (item.href === "/sales" || item.href === "/purchases") {
+            return permissions.includes("transactions:read")
         }
         return true
     })
 
     return (
         <div className={cn("flex h-full w-64 flex-col border-r bg-card text-card-foreground", className)}>
-            <div className="flex h-14 lg:h-15 items-center border-b px-4">
+            <div className="flex h-14 lg:h-[60px] items-center border-b px-4">
                 <Link href="/" className="flex items-center gap-2 font-semibold" onClick={onClose}>
                     <Package className="h-6 w-6" />
                     <span>Sports Shop IMS</span>
@@ -63,7 +68,7 @@ export function Sidebar({ className, onClose, user }: SidebarProps) {
                                     "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
                                     isActive
                                         ? "bg-muted text-primary font-medium"
-                                        : "text-muted-foreground hover:bg-muted"
+                                        : "text-muted-foreground hover:bg-muted",
                                 )}
                             >
                                 <item.icon className="h-4 w-4" />
@@ -91,7 +96,7 @@ export function Sidebar({ className, onClose, user }: SidebarProps) {
                         variant="ghost"
                         className={cn(
                             "w-full justify-start gap-2 text-muted-foreground hover:text-primary cursor-pointer",
-                            pathname === "/settings" ? "text-primary" : ""
+                            pathname === "/settings" ? "text-primary" : "",
                         )}
                     >
                         <Settings className="h-4 w-4" />
