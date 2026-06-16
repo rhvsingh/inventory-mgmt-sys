@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { Authz } from "@/lib/access";
+import { Authz, type AuthUser } from "@/lib/access";
 
 const adjustmentSchema = z.object({
 	productId: z.string(),
@@ -40,7 +40,7 @@ export async function createAdjustment(formData: FormData) {
 		return { error: "Product not found" }
 	}
 
-	const authCheck = Authz.check(session.user as any, "adjustments:create", {
+	const authCheck = Authz.check(session.user as AuthUser, "adjustments:create", {
 		adjustment: { qtyChange },
 		product,
 	})
