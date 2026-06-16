@@ -1,82 +1,83 @@
-"use server";
+"use server"
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
-import { Authz, type AuthUser } from "@/lib/access";
+import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
+import { z } from "zod"
+
+import { auth } from "@/auth"
+import { type AuthUser, Authz } from "@/lib/access"
+import { prisma } from "@/lib/prisma"
 
 const adjustmentSchema = z.object({
-	productId: z.string(),
-	qtyChange: z.coerce.number().int(),
-	reason: z.string().min(1, "Reason is required"),
-});
+    productId: z.string(),
+    qtyChange: z.coerce.number().int(),
+    reason: z.string().min(1, "Reason is required"),
+})
 
 export async function createAdjustment(formData: FormData) {
-	const rawData = {
-		productId: formData.get("productId"),
-		qtyChange: formData.get("qtyChange"),
-		reason: formData.get("reason"),
-	};
+    const rawData = {
+        productId: formData.get("productId"),
+        qtyChange: formData.get("qtyChange"),
+        reason: formData.get("reason"),
+    }
 
-	const validatedData = adjustmentSchema.safeParse(rawData);
+    const validatedData = adjustmentSchema.safeParse(rawData)
 
-	if (!validatedData.success) {
-		return { error: "Invalid data" };
-	}
+    if (!validatedData.success) {
+        return { error: "Invalid data" }
+    }
 
-	const { productId, qtyChange, reason } = validatedData.data;
+    const { productId, qtyChange, reason } = validatedData.data
 
-	const session = await auth()
-	if (!session?.user?.id) {
-		return { error: "Unauthorized: Please log in." }
-	}
+    const session = await auth()
+    if (!session?.user?.id) {
+        return { error: "Unauthorized: Please log in." }
+    }
 
-	const product = await prisma.product.findUnique({
-		where: { id: productId },
-	})
-	if (!product) {
-		return { error: "Product not found" }
-	}
+    const product = await prisma.product.findUnique({
+        where: { id: productId },
+    })
+    if (!product) {
+        return { error: "Product not found" }
+    }
 
-	const authCheck = Authz.check(session.user as AuthUser, "adjustments:create", {
-		adjustment: { qtyChange },
-		product,
-	})
-	if (!authCheck.authorized) {
-		return { error: authCheck.reason || "Unauthorized" }
-	}
+    const authCheck = Authz.check(session.user as AuthUser, "adjustments:create", {
+        adjustment: { qtyChange },
+        product,
+    })
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
+    }
 
-	const userId = session.user.id
+    const userId = session.user.id
 
-	try {
-		await prisma.$transaction(async (tx) => {
-			// 1. Create Adjustment Record
-			await tx.adjustment.create({
-				data: {
-					productId,
-					qtyChange,
-					reason,
-					userId,
-				},
-			});
+    try {
+        await prisma.$transaction(async (tx) => {
+            // 1. Create Adjustment Record
+            await tx.adjustment.create({
+                data: {
+                    productId,
+                    qtyChange,
+                    reason,
+                    userId,
+                },
+            })
 
-			// 2. Update Product Stock
-			await tx.product.update({
-				where: { id: productId },
-				data: {
-					stockQty: {
-						increment: qtyChange,
-					},
-				},
-			});
-		});
-	} catch (error) {
-		console.error("Adjustment failed:", error);
-		return { error: "Adjustment failed" };
-	}
+            // 2. Update Product Stock
+            await tx.product.update({
+                where: { id: productId },
+                data: {
+                    stockQty: {
+                        increment: qtyChange,
+                    },
+                },
+            })
+        })
+    } catch (error) {
+        console.error("Adjustment failed:", error)
+        return { error: "Adjustment failed" }
+    }
 
-	revalidatePath("/products");
-	redirect("/products");
+    revalidatePath("/products")
+    redirect("/products")
 }

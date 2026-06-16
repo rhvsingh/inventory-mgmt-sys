@@ -16,7 +16,13 @@ interface ReportCardsProps {
     showLowStock?: boolean
 }
 
-export function ReportCards({ valuation, lowStockCount, totalSkus, showValuation = true, showLowStock = true }: ReportCardsProps) {
+export function ReportCards({
+    valuation,
+    lowStockCount,
+    totalSkus,
+    showValuation = true,
+    showLowStock = true,
+}: ReportCardsProps) {
     return (
         <div className="grid gap-4 md:grid-cols-3">
             {showValuation && (

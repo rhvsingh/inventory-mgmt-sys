@@ -3,10 +3,10 @@
 import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidateTag } from "next/cache"
 
-import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { Authz } from "@/lib/access"
 import type { Action, AuthUser } from "@/lib/access/types"
+import { prisma } from "@/lib/prisma"
 import type {
     CustomerStats,
     EntitySummary,

@@ -2,6 +2,7 @@
 
 import { MoreHorizontal, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+
 import { deleteUser } from "@/actions/user"
 import {
     AlertDialog,
@@ -22,9 +23,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChangePasswordDialog } from "./change-password-dialog"
-
 import type { User } from "@/types"
+
+import { ChangePasswordDialog } from "./change-password-dialog"
 import { EditUserDialog } from "./edit-user-dialog"
 
 export function UserActions({ user, roles }: { user: User; roles: { id: string; name: string }[] }) {

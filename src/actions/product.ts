@@ -96,7 +96,7 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
 export async function updateProduct(
     id: string,
     _prevState: ActionState | null,
-    formData: FormData
+    formData: FormData,
 ): Promise<ActionState> {
     const session = await auth()
     if (!session?.user) {
@@ -245,7 +245,7 @@ export async function deleteProduct(id: string) {
     const hasDependencies = dependencyCount > 0 || adjustmentCount > 0
 
     const authCheck = Authz.check(session.user, "products:delete", {
-        product: { hasDependencies }
+        product: { hasDependencies },
     })
     if (!authCheck.authorized) {
         return { error: authCheck.reason || "Unauthorized" }
@@ -324,7 +324,7 @@ export async function getProductsPaginated(
     query?: string,
     page: number = 1,
     limit: number = 10,
-    filters?: ProductFilters
+    filters?: ProductFilters,
 ): Promise<{ products: Product[]; metadata: { total: number; page: number; totalPages: number } }> {
     "use cache"
     cacheTag("products")

@@ -22,7 +22,7 @@ export function ProductList({ products, metadata, permissions }: ProductListProp
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(productColumns.map((c) => c.id)))
 
     const [optimisticProducts, removeOptimisticProduct] = useOptimistic(products, (state, idToRemove: string) =>
-        state.filter((p) => p.id !== idToRemove)
+        state.filter((p) => p.id !== idToRemove),
     )
 
     const toggleColumn = useCallback((column: string) => {
@@ -55,7 +55,7 @@ export function ProductList({ products, metadata, permissions }: ProductListProp
                                     >
                                         {column.label}
                                     </TableHead>
-                                ) : null
+                                ) : null,
                             )}
                         </TableRow>
                     </TableHeader>

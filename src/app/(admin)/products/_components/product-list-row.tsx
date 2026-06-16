@@ -67,5 +67,5 @@ export const ProductListRow = memo(
             prev.product.id === next.product.id &&
             new Date(prev.product.updatedAt).getTime() === new Date(next.product.updatedAt).getTime()
         )
-    }
+    },
 )

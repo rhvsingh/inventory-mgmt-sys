@@ -12,8 +12,10 @@ import {
     getSupplierSummary,
     getTopSellingProducts,
 } from "@/actions/reports"
+import { auth } from "@/auth"
 import { formatCurrency } from "@/lib/utils"
 import type { CustomerStats, SupplierStats } from "@/types"
+
 import { LowStockTable } from "./low-stock-table"
 import { ProfitLossCard } from "./profit-loss-card"
 import { ReportCards } from "./report-cards"
@@ -110,8 +112,6 @@ export async function PurchaseSummaryWrapper() {
     ]
     return <SummaryStatsCard stats={stats} />
 }
-
-import { auth } from "@/auth"
 
 export async function ReportCardsWrapper() {
     const session = await auth()

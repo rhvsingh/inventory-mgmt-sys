@@ -4,6 +4,7 @@ import { PlusCircle } from "lucide-react"
 import { useState } from "react"
 import { useFormStatus } from "react-dom"
 import { toast } from "sonner"
+
 import { createUser } from "@/actions/user"
 import { Button } from "@/components/ui/button"
 import {
@@ -61,9 +62,7 @@ export function CreateUserDialog({ roles = [] }: { roles?: { id: string; name: s
                 <form action={clientAction}>
                     <DialogHeader>
                         <DialogTitle>Create User</DialogTitle>
-                        <DialogDescription>
-                            Add a new user to the system.
-                        </DialogDescription>
+                        <DialogDescription>Add a new user to the system.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">

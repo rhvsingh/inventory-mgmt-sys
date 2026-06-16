@@ -3,7 +3,6 @@
 import "server-only"
 import { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
-import { redirect } from "next/navigation"
 import { z } from "zod"
 
 import { auth } from "@/auth"
