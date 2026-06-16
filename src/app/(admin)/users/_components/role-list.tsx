@@ -28,7 +28,10 @@ import {
 } from "@/components/ui/table";
 import type { PermissionDB, RoleDB } from "@/types";
 
-import { RoleDialog } from "./role-dialog";
+import dynamic from "next/dynamic";
+const RoleDialog = dynamic(() => import("./role-dialog").then((m) => m.RoleDialog), {
+	ssr: false,
+});
 
 interface RoleListProps {
 	roles: RoleDB[];
