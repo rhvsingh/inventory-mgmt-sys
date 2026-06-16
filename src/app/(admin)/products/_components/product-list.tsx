@@ -15,10 +15,10 @@ interface ProductListProps {
         totalPages: number
         total: number
     }
-    role?: string
+    permissions?: string[]
 }
 
-export function ProductList({ products, metadata, role }: ProductListProps) {
+export function ProductList({ products, metadata, permissions }: ProductListProps) {
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(productColumns.map((c) => c.id)))
 
     const [optimisticProducts, removeOptimisticProduct] = useOptimistic(products, (state, idToRemove: string) =>
@@ -72,7 +72,7 @@ export function ProductList({ products, metadata, role }: ProductListProps) {
                                     key={product.id}
                                     product={product}
                                     visibleColumns={visibleColumns}
-                                    role={role}
+                                    permissions={permissions}
                                     onDelete={() => removeOptimisticProduct(product.id)}
                                 />
                             ))

@@ -8,12 +8,12 @@ import type { Product } from "@/types"
 interface ProductListRowProps {
     product: Product
     visibleColumns: Set<string>
-    role?: string
+    permissions?: string[]
     onDelete: () => void
 }
 
 export const ProductListRow = memo(
-    function ProductListRow({ product, visibleColumns, role, onDelete }: ProductListRowProps) {
+    function ProductListRow({ product, visibleColumns, permissions, onDelete }: ProductListRowProps) {
         return (
             <TableRow>
                 {visibleColumns.has("image") && (
@@ -51,7 +51,7 @@ export const ProductListRow = memo(
                     <TableCell className="text-right">
                         <ProductActions
                             productId={product.id}
-                            role={role}
+                            permissions={permissions}
                             onDelete={onDelete}
                             isArchived={product.isArchived}
                         />
@@ -62,7 +62,7 @@ export const ProductListRow = memo(
     },
     (prev, next) => {
         return (
-            prev.role === next.role &&
+            prev.permissions?.join(",") === next.permissions?.join(",") &&
             prev.visibleColumns === next.visibleColumns &&
             prev.product.id === next.product.id &&
             new Date(prev.product.updatedAt).getTime() === new Date(next.product.updatedAt).getTime()

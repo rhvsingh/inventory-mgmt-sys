@@ -5,11 +5,11 @@ interface ProductListWrapperProps {
     query?: string
     page: number
     filters: ProductFiltersType
-    role: string
+    permissions: string[]
 }
 
-export async function ProductListWrapper({ query, page, filters, role }: ProductListWrapperProps) {
+export async function ProductListWrapper({ query, page, filters, permissions }: ProductListWrapperProps) {
     const { products, metadata } = await getProductsPaginated(query, page, 10, filters)
 
-    return <ProductList products={products} metadata={metadata} role={role} />
+    return <ProductList products={products} metadata={metadata} permissions={permissions} />
 }

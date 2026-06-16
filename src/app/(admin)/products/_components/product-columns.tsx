@@ -11,7 +11,7 @@ export interface ColumnDef {
     label: string
     align?: "left" | "right" | "center"
     className?: string
-    render?: (product: Product, role?: string) => React.ReactNode
+    render?: (product: Product, permissions?: string[]) => React.ReactNode
 }
 
 export const productColumns: ColumnDef[] = [
@@ -77,6 +77,6 @@ export const productColumns: ColumnDef[] = [
         id: "actions",
         label: "Actions",
         align: "right",
-        render: (product, role) => <ProductActions productId={product.id} role={role} />,
+        render: (product, permissions) => <ProductActions productId={product.id} permissions={permissions} />,
     },
 ]

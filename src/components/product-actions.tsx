@@ -17,14 +17,17 @@ import {
 
 interface ProductActionsProps {
     productId: string
-    role?: string
+    permissions?: string[]
     onDelete?: () => void
     isArchived?: boolean
 }
 
-export function ProductActions({ productId, role, onDelete, isArchived }: ProductActionsProps) {
+export function ProductActions({ productId, permissions, onDelete, isArchived }: ProductActionsProps) {
     const [isPending, startTransition] = useTransition()
-    const canManage = role === "ADMIN" || role === "MANAGER"
+    const canEdit = permissions?.includes("products:update") ?? false
+    const canArchive = permissions?.includes("products:archive") ?? false
+    const canDelete = permissions?.includes("products:delete") ?? false
+    const canManage = canEdit || canArchive || canDelete
 
     const handleArchive = () => {
         if (confirm("Are you sure you want to archive this product?")) {
@@ -82,38 +85,48 @@ export function ProductActions({ productId, role, onDelete, isArchived }: Produc
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <Link href={`/products/${productId}/edit`}>
-                    <DropdownMenuItem className="cursor-pointer">
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                    </DropdownMenuItem>
-                </Link>
-                <DropdownMenuSeparator />
+                {canEdit && (
+                    <>
+                        <Link href={`/products/${productId}/edit`}>
+                            <DropdownMenuItem className="cursor-pointer">
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                            </DropdownMenuItem>
+                        </Link>
+                        {(canArchive || canDelete) && <DropdownMenuSeparator />}
+                    </>
+                )}
                 {isArchived ? (
                     <>
-                        <DropdownMenuItem onClick={handleRestore} className="cursor-pointer" disabled={isPending}>
-                            <Undo2 className="mr-2 h-4 w-4" />
-                            Restore
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
+                        {canArchive && (
+                            <DropdownMenuItem onClick={handleRestore} className="cursor-pointer" disabled={isPending}>
+                                <Undo2 className="mr-2 h-4 w-4" />
+                                Restore
+                            </DropdownMenuItem>
+                        )}
+                        {canArchive && canDelete && <DropdownMenuSeparator />}
+                        {canDelete && (
+                            <DropdownMenuItem
+                                onClick={handleDelete}
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                                disabled={isPending}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Permanently
+                            </DropdownMenuItem>
+                        )}
+                    </>
+                ) : (
+                    canArchive && (
                         <DropdownMenuItem
-                            onClick={handleDelete}
+                            onClick={handleArchive}
                             className="text-destructive focus:text-destructive cursor-pointer"
                             disabled={isPending}
                         >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Permanently
+                            <Archive className="mr-2 h-4 w-4" />
+                            Archive
                         </DropdownMenuItem>
-                    </>
-                ) : (
-                    <DropdownMenuItem
-                        onClick={handleArchive}
-                        className="text-destructive focus:text-destructive cursor-pointer"
-                        disabled={isPending}
-                    >
-                        <Archive className="mr-2 h-4 w-4" />
-                        Archive
-                    </DropdownMenuItem>
+                    )
                 )}
             </DropdownMenuContent>
         </DropdownMenu>
