@@ -4,6 +4,7 @@ import "server-only"
 import { cacheLife, cacheTag, revalidateTag } from "next/cache"
 import { z } from "zod"
 
+import { logActivity } from "@/actions/audit"
 import { auth } from "@/auth"
 import { Authz } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
@@ -138,7 +139,7 @@ export async function createRole(_prevState: ActionState | null, formData: FormD
                 })
             }
         })
-
+        await logActivity("ROLE_CREATE", { name: validated.data.name })
         revalidateTag("roles", "hours")
         return { success: true }
     } catch (e) {
@@ -234,7 +235,7 @@ export async function updateRole(_prevState: ActionState | null, formData: FormD
                 })
             }
         })
-
+        await logActivity("ROLE_UPDATE", { id: roleId, name: validated.data.name })
         revalidateTag("roles", "hours")
         // Also revalidate users since their permissions might have changed dynamically
         revalidateTag("users", "hours")
@@ -284,7 +285,7 @@ export async function deleteRole(roleId: string): Promise<ActionState> {
         await prisma.role.delete({
             where: { id: roleId },
         })
-
+        await logActivity("ROLE_DELETE", { id: roleId, name: roleToDelete.name })
         revalidateTag("roles", "hours")
         return { success: true }
     } catch (e) {

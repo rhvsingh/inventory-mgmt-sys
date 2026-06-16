@@ -51,7 +51,13 @@ const permissionGroups = [
     },
     {
         title: "Transactions & Stock Adjustments",
-        permissions: ["transactions:create", "transactions:read", "adjustments:create"],
+        permissions: [
+            "transactions:create",
+            "transactions:create_purchase",
+            "transactions:read",
+            "adjustments:create",
+            "adjustments:create_unbounded",
+        ],
     },
     {
         title: "User Management",
@@ -81,6 +87,10 @@ const permissionGroups = [
             "suppliers:update",
             "suppliers:delete",
         ],
+    },
+    {
+        title: "Audit Logs",
+        permissions: ["audit_logs:read"],
     },
 ]
 

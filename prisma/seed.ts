@@ -18,9 +18,17 @@ async function main() {
             name: "transactions:create",
             description: "Create sales and purchase transactions",
         },
+        {
+            name: "transactions:create_purchase",
+            description: "Create purchase transactions (Restock)",
+        },
         { name: "transactions:read", description: "View transaction history" },
         // ─── Adjustments ──────────────────────────────────────────
         { name: "adjustments:create", description: "Create stock adjustments" },
+        {
+            name: "adjustments:create_unbounded",
+            description: "Perform stock adjustments over 50 units",
+        },
         // ─── Users ────────────────────────────────────────────────
         { name: "users:create", description: "Create user accounts" },
         { name: "users:read", description: "View user list and details" },
@@ -56,6 +64,8 @@ async function main() {
         { name: "suppliers:read", description: "View supplier list" },
         { name: "suppliers:update", description: "Update supplier details" },
         { name: "suppliers:delete", description: "Delete suppliers" },
+        // ─── Audit Logs ───────────────────────────────────────────
+        { name: "audit_logs:read", description: "View system audit logs trail" },
     ]
 
     console.log("Seeding permissions...")
@@ -132,8 +142,10 @@ async function main() {
         "products:archive",
         "products:import",
         "transactions:create",
+        "transactions:create_purchase",
         "transactions:read",
         "adjustments:create",
+        "adjustments:create_unbounded",
         "reports:low_stock",
         "reports:valuation",
         "reports:history",
@@ -208,6 +220,18 @@ async function main() {
             roleId: roles["Clerk"].id,
         },
     })
+
+    // 6. Enforce Negative Stock at Database Level (SEC-13)
+    console.log("Applying database constraints...")
+    try {
+        await prisma.$executeRawUnsafe(`
+            ALTER TABLE "Product" 
+            ADD CONSTRAINT positive_stock CHECK ("stockQty" >= 0);
+        `)
+        console.log("Database constraint 'positive_stock' verified/added successfully.")
+    } catch (e) {
+        console.log("Constraint 'positive_stock' already exists or is active.")
+    }
 
     console.log("Seeding completed successfully!", { adminUser, clerkUser })
 }

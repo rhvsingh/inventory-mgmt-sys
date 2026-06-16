@@ -18,9 +18,11 @@ export type Action =
     | "products:import"
     // ─── Transactions ─────────────────────────────────────────────
     | "transactions:create"
+    | "transactions:create_purchase"
     | "transactions:read"
     // ─── Adjustments ──────────────────────────────────────────────
     | "adjustments:create"
+    | "adjustments:create_unbounded"
     // ─── Users ────────────────────────────────────────────────────
     | "users:create"
     | "users:read"
@@ -47,6 +49,8 @@ export type Action =
     | "suppliers:delete"
     // ─── Notifications ────────────────────────────────────────────
     | "notifications:read"
+    // ─── Audit Logs ───────────────────────────────────────────────
+    | "audit_logs:read"
 
 export interface ResourceAttributes {
     [key: string]: unknown

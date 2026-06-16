@@ -20,6 +20,7 @@ model User {
 
   transactions Transaction[]
   adjustments  Adjustment[]
+  auditLogs    AuditLog[]
 }
 
 model Role {
@@ -101,7 +102,7 @@ model Transaction {
   date      DateTime        @default(now())
   total     Decimal         @db.Decimal(10, 2)
   userId    String
-  user      User            @relation(fields: [userId], references: [id])
+  user      User            @relation(fields: [userId], references: [id], onDelete: Restrict)
   
   items     TransactionItem[]
 
@@ -155,12 +156,25 @@ model Adjustment {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   reason    String
   qtyChange Int      // Positive or negative
   createdAt DateTime @default(now())
 
   @@index([productId])
   @@index([userId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  details   String   // JSON string containing what changed
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
   @@index([createdAt])
 }

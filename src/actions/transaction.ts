@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
 import { z } from "zod"
 
+import { logActivity } from "@/actions/audit"
 import { auth } from "@/auth"
 import { Authz } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
@@ -25,6 +26,19 @@ const transactionSchema = z.object({
     customerId: z.string().optional(),
     supplierId: z.string().optional(),
 })
+
+type TransactionForExport = Prisma.TransactionGetPayload<{
+    include: {
+        user: { select: { name: true } }
+        customer: { select: { name: true } }
+        supplier: { select: { name: true } }
+        items: {
+            include: {
+                product: { select: { name: true; sku: true } }
+            }
+        }
+    }
+}>
 
 export async function createTransaction(data: {
     type: "SALE" | "PURCHASE"
@@ -50,7 +64,7 @@ export async function createTransaction(data: {
         return { error: "Invalid data" }
     }
 
-    const { type, items } = validatedData.data
+    const { type, items, customerId, supplierId } = validatedData.data
     const total = items.reduce((sum, item) => sum + item.quantity * item.price - (item.discount || 0), 0)
 
     const userId = session.user.id
@@ -168,6 +182,7 @@ export async function createTransaction(data: {
                 }
             }
         })
+        await logActivity("TRANSACTION_CREATE", { type, customerId, supplierId, itemsCount: items.length })
     } catch (error) {
         const message = error instanceof Error ? error.message : "Transaction failed"
         console.error("Transaction failed:", message)
@@ -310,4 +325,87 @@ const getCachedTransactions = async (
     ])
 
     return { transactions, total }
+}
+
+export interface ExportedTransaction {
+    id: string
+    date: Date
+    type: string
+    total: number
+    createdBy: string
+    partnerName: string
+    items: string
+}
+
+export async function getAllTransactionsForExport(type?: "SALE" | "PURCHASE"): Promise<ExportedTransaction[]> {
+    const session = await auth()
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized")
+    }
+
+    const authCheck = Authz.check(session.user, "transactions:read")
+    if (!authCheck.authorized) {
+        throw new Error(authCheck.reason || "Unauthorized")
+    }
+
+    const isClerk = session.user.role === "Clerk"
+    const userIdFilter = isClerk ? session.user.id : undefined
+
+    const where: Prisma.TransactionWhereInput = {
+        ...(type ? { type } : {}),
+        ...(userIdFilter ? { userId: userIdFilter } : {}),
+    }
+
+    const transactions = await prisma.transaction.findMany({
+        where,
+        include: {
+            user: {
+                select: {
+                    name: true,
+                },
+            },
+            customer: {
+                select: {
+                    name: true,
+                },
+            },
+            supplier: {
+                select: {
+                    name: true,
+                },
+            },
+            items: {
+                include: {
+                    product: {
+                        select: {
+                            name: true,
+                            sku: true,
+                        },
+                    },
+                },
+            },
+        },
+        orderBy: { date: "desc" },
+    })
+
+    const serialized = serializePrisma(transactions) as unknown as TransactionForExport[]
+
+    return serialized.map((tx) => {
+        const itemsList =
+            tx.items
+                ?.map(
+                    (item) =>
+                        `${item.product?.name || "Unknown Product"} (SKU: ${item.product?.sku || "N/A"}) x${item.quantity}`,
+                )
+                .join("; ") || ""
+        return {
+            id: tx.id,
+            date: tx.date,
+            type: tx.type,
+            total: Number(tx.total),
+            createdBy: tx.user?.name || "System",
+            partnerName: tx.type === "SALE" ? tx.customer?.name || "Walk-in Customer" : tx.supplier?.name || "N/A",
+            items: itemsList,
+        }
+    })
 }

@@ -24,12 +24,14 @@ export const PERMISSIONS = {
     // ─── TRANSACTIONS ─────────────────────────────────────────────
     transaction: {
         create: p("transactions:create"),
+        create_purchase: p("transactions:create_purchase"),
         read: p("transactions:read"),
     },
 
     // ─── ADJUSTMENTS ──────────────────────────────────────────────
     adjustment: {
         create: p("adjustments:create"),
+        create_unbounded: p("adjustments:create_unbounded"),
     },
 
     // ─── USERS ────────────────────────────────────────────────────
@@ -75,6 +77,11 @@ export const PERMISSIONS = {
         update: p("suppliers:update"),
         delete: p("suppliers:delete"),
     },
+
+    // ─── AUDIT LOGS ──────────────────────────────────────────────
+    auditLog: {
+        read: p("audit_logs:read"),
+    },
 } as const
 
 /**
@@ -98,9 +105,11 @@ export const actionToPermissionMap: Record<Action, Permission> = {
     "products:import": PERMISSIONS.product.import,
     // Transactions
     "transactions:create": PERMISSIONS.transaction.create,
+    "transactions:create_purchase": PERMISSIONS.transaction.create_purchase,
     "transactions:read": PERMISSIONS.transaction.read,
     // Adjustments
     "adjustments:create": PERMISSIONS.adjustment.create,
+    "adjustments:create_unbounded": PERMISSIONS.adjustment.create_unbounded,
     // Users
     "users:create": PERMISSIONS.user.create,
     "users:read": PERMISSIONS.user.read,
@@ -127,4 +136,6 @@ export const actionToPermissionMap: Record<Action, Permission> = {
     "suppliers:read": PERMISSIONS.supplier.read,
     "suppliers:update": PERMISSIONS.supplier.update,
     "suppliers:delete": PERMISSIONS.supplier.delete,
+    // Audit Logs
+    "audit_logs:read": PERMISSIONS.auditLog.read,
 }

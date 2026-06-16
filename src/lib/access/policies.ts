@@ -3,12 +3,12 @@ import type { Action, AuthUser, PolicyDecision, PolicyFn, ResourceAttributes } f
 
 export const POLICIES: Partial<Record<Action, PolicyFn>> = {
     "transactions:create": (user, attrs) => {
-        if (attrs?.transaction && Roles.isClerk(user)) {
+        if (attrs?.transaction && !user.permissions.includes("transactions:create_purchase")) {
             const type = (attrs.transaction as { type: string }).type
             if (type !== "SALE") {
                 return {
                     allowed: false,
-                    reason: "Clerks are only permitted to record sale transactions.",
+                    reason: "Unauthorized. You are only permitted to record sale transactions.",
                 }
             }
         }
@@ -27,12 +27,12 @@ export const POLICIES: Partial<Record<Action, PolicyFn>> = {
         return { allowed: true }
     },
     "adjustments:create": (user, attrs) => {
-        if (attrs?.adjustment && Roles.isClerk(user)) {
+        if (attrs?.adjustment && !user.permissions.includes("adjustments:create_unbounded")) {
             const qtyChange = (attrs.adjustment as { qtyChange: number }).qtyChange
             if (Math.abs(qtyChange) > 50) {
                 return {
                     allowed: false,
-                    reason: "Unauthorized. Clerks are capped at stock adjustments of up to 50 units.",
+                    reason: "Unauthorized. You are capped at stock adjustments of up to 50 units.",
                 }
             }
         }

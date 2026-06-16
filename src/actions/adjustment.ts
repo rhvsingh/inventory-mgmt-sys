@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 
+import { logActivity } from "@/actions/audit"
 import { auth } from "@/auth"
 import { type AuthUser, Authz } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
@@ -81,6 +82,7 @@ export async function createAdjustment(formData: FormData) {
                 },
             })
         })
+        await logActivity("ADJUSTMENT_CREATE", { productId, qtyChange, reason, productName: product.name })
     } catch (error) {
         console.error("Adjustment failed:", error)
         return { error: "Adjustment failed" }
