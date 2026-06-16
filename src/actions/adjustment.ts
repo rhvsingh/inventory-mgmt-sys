@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
+import { Authz } from "@/lib/access";
 
 const adjustmentSchema = z.object({
 	productId: z.string(),
@@ -26,9 +28,27 @@ export async function createAdjustment(formData: FormData) {
 
 	const { productId, qtyChange, reason } = validatedData.data;
 
-	// TODO: Get actual user ID
-	const adminUser = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-	const userId = adminUser?.id || "placeholder-user-id";
+	const session = await auth()
+	if (!session?.user?.id) {
+		return { error: "Unauthorized: Please log in." }
+	}
+
+	const product = await prisma.product.findUnique({
+		where: { id: productId },
+	})
+	if (!product) {
+		return { error: "Product not found" }
+	}
+
+	const authCheck = Authz.check(session.user as any, "adjustments:create", {
+		adjustment: { qtyChange },
+		product,
+	})
+	if (!authCheck.authorized) {
+		return { error: authCheck.reason || "Unauthorized" }
+	}
+
+	const userId = session.user.id
 
 	try {
 		await prisma.$transaction(async (tx) => {

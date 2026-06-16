@@ -1,7 +1,11 @@
 "use server"
 
+import "server-only"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+
+import { auth } from "@/auth"
+import { Authz } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
 
 const productImportSchema = z.object({
@@ -23,6 +27,15 @@ export type ImportResult = {
 }
 
 export async function importProducts(data: unknown[]): Promise<ImportResult> {
+    const session = await auth()
+    if (!session?.user) {
+        throw new Error("Unauthorized")
+    }
+    const authCheck = Authz.check(session.user, "products:import")
+    if (!authCheck.authorized) {
+        throw new Error(authCheck.reason || "Unauthorized")
+    }
+
     const result: ImportResult = {
         success: 0,
         failed: 0,

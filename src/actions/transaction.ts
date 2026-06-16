@@ -1,52 +1,65 @@
 "use server"
 
+import "server-only"
 import { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
+import { redirect } from "next/navigation"
+import { z } from "zod"
+
 import { auth } from "@/auth"
+import { Authz } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
 import { serializePrisma } from "@/lib/prisma-utils"
-import { transactionSchema } from "@/lib/schemas"
 import type { Transaction } from "@/types"
+
+const transactionItemSchema = z.object({
+    productId: z.string(),
+    quantity: z.coerce.number().int().positive(),
+    price: z.coerce.number().min(0),
+    discount: z.coerce.number().min(0).optional(),
+})
+
+const transactionSchema = z.object({
+    type: z.enum(["SALE", "PURCHASE"]),
+    items: z.array(transactionItemSchema).min(1),
+    userId: z.string().optional(),
+    customerId: z.string().optional(),
+    supplierId: z.string().optional(),
+})
 
 export async function createTransaction(data: {
     type: "SALE" | "PURCHASE"
+    items: { productId: string; quantity: number; price: number; discount?: number }[]
     customerId?: string
     supplierId?: string
-    items: { productId: string; quantity: number; price: number; discount?: number }[]
 }) {
     const session = await auth()
     if (!session?.user?.id) {
         return { error: "Unauthorized" }
     }
 
-    const { role } = session.user
-
-    // RBAC: Clerks cannot record PURCHASES (Stock In)
-    if (data.type === "PURCHASE" && role !== "ADMIN" && role !== "MANAGER") {
-        return { error: "Unauthorized. Clerks cannot record purchases." }
+    // ABAC/RBAC validation
+    const authCheck = Authz.check(session.user, "transactions:create", {
+        transaction: { userId: session.user.id, type: data.type },
+    })
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
 
     const validatedData = transactionSchema.safeParse(data)
-
     if (!validatedData.success) {
         return { error: "Invalid data" }
     }
 
     const { type, items } = validatedData.data
-    // Calculate total: (qty * price) - discount
-    const total = items.reduce((sum, item) => sum + (item.quantity * item.price - item.discount), 0)
+    const total = items.reduce((sum, item) => sum + item.quantity * item.price - (item.discount || 0), 0)
 
-    // Attribute to the actual user
     const userId = session.user.id
 
     try {
         await prisma.$transaction(async (tx) => {
             // 1. Prepare Items with Cost Snapshot
             const transactionItemsData = []
-
-            // We need to fetch current product cost for SALES to snapshot it
-            // For PURCHASES, the cost is irrelevant (it's 0 or we could store incoming price, but typically we track COGS on Sale)
-            // Let's store cost for both for consistency (Purchase cost = incoming price)
 
             for (const item of items) {
                 let costSnapshot = new Prisma.Decimal(0)
@@ -55,7 +68,6 @@ export async function createTransaction(data: {
                     const product = await tx.product.findUnique({ where: { id: item.productId } })
                     costSnapshot = product?.costPrice || new Prisma.Decimal(0)
                 } else {
-                    // For Purchase, the "cost" of the item is effectively the price we paid
                     costSnapshot = new Prisma.Decimal(item.price)
                 }
 
@@ -108,19 +120,15 @@ export async function createTransaction(data: {
                         const currentStock = currentProduct.stockQty
                         const currentCost = Number(currentProduct.costPrice)
                         const newStock = item.quantity
-                        // Effective unit cost considering line discount
                         const totalLineCost = item.quantity * item.price - (item.discount || 0)
                         const unitCost = totalLineCost / item.quantity
 
                         let newCostPrice = currentCost
                         const finalStock = currentStock + newStock
 
-                        // Weighted Average Cost Calculation
                         if (currentStock <= 0) {
-                            // If we had no stock (or negative), the new cost is just the incoming cost
                             newCostPrice = unitCost
                         } else {
-                            // (Old Value + New Value) / Total Qty
                             const totalValue = currentStock * currentCost + totalLineCost
                             newCostPrice = totalValue / finalStock
                         }
@@ -133,14 +141,12 @@ export async function createTransaction(data: {
                             },
                         })
                     } else {
-                        // Fallback if product not found (shouldn't happen due to FK)
                         await tx.product.update({
                             where: { id: item.productId },
                             data: { stockQty: { increment: qtyChange } },
                         })
                     }
                 } else {
-                    // Sale: Just update stock
                     await tx.product.update({
                         where: { id: item.productId },
                         data: {
@@ -156,15 +162,13 @@ export async function createTransaction(data: {
     }
 
     revalidateTag("transactions", "minutes")
-    revalidateTag("products", "minutes") // Stock changes, so invalidate products too
-    revalidateTag("reports", "minutes") // Sales/purchases change reports
+    revalidateTag("products", "minutes")
+    revalidateTag("reports", "minutes")
 
     revalidatePath("/products")
     revalidatePath("/purchases")
     revalidatePath("/sales")
 
-    // If we redirect here, the client component's try/catch block will catch the NEXT_REDIRECT error
-    // and treat it as a failure. Instead, we return success and let the client handle navigation.
     return { success: true }
 }
 
@@ -174,8 +178,55 @@ export async function getTransactions(
     limit: number = 50,
     search?: string,
     customerId?: string,
-    supplierId?: string
-): Promise<{ data: Transaction[]; metadata: { total: number; page: number; totalPages: number } }> {
+    supplierId?: string,
+): Promise<{
+    data: Transaction[]
+    metadata: { total: number; page: number; totalPages: number }
+}> {
+    const session = await auth()
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized")
+    }
+
+    const authCheck = Authz.check(session.user, "transactions:read")
+    if (!authCheck.authorized) {
+        throw new Error(authCheck.reason || "Unauthorized")
+    }
+
+    // ABAC Rule: CLERK can only view transactions they created
+    const isClerk = session.user.role === "Clerk"
+    const userIdFilter = isClerk ? session.user.id : undefined
+
+    const { transactions, total } = await getCachedTransactions(
+        type,
+        page,
+        limit,
+        search,
+        customerId,
+        supplierId,
+        userIdFilter,
+    )
+    const totalPages = Math.ceil(total / limit)
+
+    return {
+        data: serializePrisma(transactions) as Transaction[],
+        metadata: {
+            total,
+            page,
+            totalPages,
+        },
+    }
+}
+
+const getCachedTransactions = async (
+    type?: "SALE" | "PURCHASE",
+    page: number = 1,
+    limit: number = 50,
+    search?: string,
+    customerId?: string,
+    supplierId?: string,
+    userIdFilter?: string,
+) => {
     "use cache"
     cacheTag(
         "transactions",
@@ -183,7 +234,8 @@ export async function getTransactions(
         `page-${page}`,
         search ? `search-${search}` : "no-search",
         customerId ? `customer-${customerId}` : "no-customer",
-        supplierId ? `supplier-${supplierId}` : "no-supplier"
+        supplierId ? `supplier-${supplierId}` : "no-supplier",
+        userIdFilter ? `user-${userIdFilter}` : "all-users",
     )
     cacheLife("minutes")
 
@@ -193,6 +245,7 @@ export async function getTransactions(
         ...(type ? { type } : {}),
         ...(customerId ? { customerId } : {}),
         ...(supplierId ? { supplierId } : {}),
+        ...(userIdFilter ? { userId: userIdFilter } : {}),
         ...(search
             ? {
                   OR: [
@@ -239,14 +292,5 @@ export async function getTransactions(
         }),
     ])
 
-    const totalPages = Math.ceil(total / limit)
-
-    return {
-        data: serializePrisma(transactions),
-        metadata: {
-            total,
-            page,
-            totalPages,
-        },
-    }
+    return { transactions, total }
 }

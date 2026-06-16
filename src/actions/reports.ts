@@ -3,6 +3,9 @@
 import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidateTag } from "next/cache"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/auth"
+import { Authz } from "@/lib/access"
+import type { Action } from "@/lib/access/types"
 import type {
     CustomerStats,
     EntitySummary,
@@ -15,7 +18,24 @@ import type {
     ValuationReport,
 } from "@/types"
 
+async function checkReportPermission(action: Action) {
+    const session = await auth()
+    if (!session?.user) {
+        throw new Error("Unauthorized")
+    }
+    const authCheck = Authz.check(session.user as any, action)
+    if (!authCheck.authorized) {
+        throw new Error(authCheck.reason || "Unauthorized")
+    }
+}
+
+// 1. Low stock report
 export async function getLowStockReport(): Promise<LowStockReportItem[]> {
+    await checkReportPermission("reports:read_low_stock")
+    return getLowStockReportCached()
+}
+
+async function getLowStockReportCached(): Promise<LowStockReportItem[]> {
     "use cache"
     cacheTag("reports", "low-stock-report")
     cacheLife("minutes")
@@ -41,7 +61,13 @@ export async function getLowStockReport(): Promise<LowStockReportItem[]> {
     return products
 }
 
+// 2. Inventory valuation
 export async function getInventoryValuation(): Promise<ValuationReport> {
+    await checkReportPermission("reports:read_valuation")
+    return getInventoryValuationCached()
+}
+
+async function getInventoryValuationCached(): Promise<ValuationReport> {
     "use cache"
     cacheTag("reports", "inventory-valuation")
     cacheLife("minutes")
@@ -85,7 +111,13 @@ export async function getInventoryValuation(): Promise<ValuationReport> {
     }
 }
 
+// 3. Sales History
 export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
+    await checkReportPermission("reports:read_history")
+    return getSalesHistoryCached()
+}
+
+async function getSalesHistoryCached(): Promise<SalesHistoryItem[]> {
     "use cache"
     cacheTag("reports", "sales-history")
     cacheLife("minutes")
@@ -119,7 +151,6 @@ export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
         take: 50,
     })
 
-    // Explicitly define the expected structure to avoid 'any' and handle stale Prisma types
     interface TransactionWithRelations {
         id: string
         date: Date
@@ -132,8 +163,6 @@ export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
         }[]
     }
 
-    // Cast the result to the explicit structure.
-    // This is safe because the db query above ensures this shape, even if local Prisma types are stale.
     const safeTransactions = transactions as unknown as TransactionWithRelations[]
 
     return safeTransactions.map((t) => ({
@@ -151,8 +180,13 @@ export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
     }))
 }
 
-// Calculate Profit & Loss based on SALES transactions
+// 4. Profit loss report
 export async function getProfitLossReport(startDate?: Date, endDate?: Date): Promise<ProfitLossSummary> {
+    await checkReportPermission("reports:read_history")
+    return getProfitLossReportCached(startDate, endDate)
+}
+
+async function getProfitLossReportCached(startDate?: Date, endDate?: Date): Promise<ProfitLossSummary> {
     "use cache"
     cacheTag("reports", "profit-loss")
     cacheLife("minutes")
@@ -187,7 +221,6 @@ export async function getProfitLossReport(startDate?: Date, endDate?: Date): Pro
         totalRevenue += Number(sale.total)
 
         for (const item of sale.items) {
-            // Use current product cost since historical cost snapshot is not available on TransactionItem
             const itemCost = Number(item.product.costPrice)
             totalCostOfGoodsSold += itemCost * item.quantity
         }
@@ -201,7 +234,13 @@ export async function getProfitLossReport(startDate?: Date, endDate?: Date): Pro
     }
 }
 
+// 5. Top selling products
 export async function getTopSellingProducts(limit = 10): Promise<TopProductItem[]> {
+    await checkReportPermission("reports:read_history")
+    return getTopSellingProductsCached(limit)
+}
+
+async function getTopSellingProductsCached(limit = 10): Promise<TopProductItem[]> {
     "use cache"
     cacheTag("reports", "top-selling")
     cacheLife("minutes")
@@ -249,13 +288,30 @@ export async function getTopSellingProducts(limit = 10): Promise<TopProductItem[
         .slice(0, limit)
 }
 
-// --- NEW REPORTS ---
-
+// 6. Refresh report data
 export async function refreshReportData() {
+    const session = await auth()
+    if (!session?.user) {
+        throw new Error("Unauthorized")
+    }
+    // Any report permission can refresh
+    const permissions = session.user.permissions || []
+    const canRefresh = permissions.some((p) =>
+        ["reports:read_low_stock", "reports:read_valuation", "reports:read_history"].includes(p)
+    )
+    if (!canRefresh) {
+        throw new Error("Forbidden")
+    }
     revalidateTag("reports", "max")
 }
 
+// 7. Supplier stats
 export async function getSupplierStats(limit = 10): Promise<SupplierStats[]> {
+    await checkReportPermission("reports:read_history")
+    return getSupplierStatsCached(limit)
+}
+
+async function getSupplierStatsCached(limit = 10): Promise<SupplierStats[]> {
     "use cache"
     cacheTag("reports", "suppliers")
     cacheLife("minutes")
@@ -307,7 +363,13 @@ export async function getSupplierStats(limit = 10): Promise<SupplierStats[]> {
     }, [])
 }
 
+// 8. Customer stats
 export async function getCustomerStats(limit = 10): Promise<CustomerStats[]> {
+    await checkReportPermission("reports:read_history")
+    return getCustomerStatsCached(limit)
+}
+
+async function getCustomerStatsCached(limit = 10): Promise<CustomerStats[]> {
     "use cache"
     cacheTag("reports", "customers")
     cacheLife("minutes")
@@ -359,7 +421,13 @@ export async function getCustomerStats(limit = 10): Promise<CustomerStats[]> {
     }, [])
 }
 
+// 9. Purchase history
 export async function getPurchaseHistory(): Promise<SalesHistoryItem[]> {
+    await checkReportPermission("reports:read_history")
+    return getPurchaseHistoryCached()
+}
+
+async function getPurchaseHistoryCached(): Promise<SalesHistoryItem[]> {
     "use cache"
     cacheTag("reports", "purchase-history")
     cacheLife("minutes")
@@ -374,9 +442,7 @@ export async function getPurchaseHistory(): Promise<SalesHistoryItem[]> {
         orderBy: { date: "desc" },
         take: 50,
     })
-    // Reuse SalesHistoryItem structure for simplicity or create new type if needed
-    // SalesHistoryItem keys: id, date, total, user, items
-    // We can map it similarly.
+
     return transactions.map((t) => ({
         id: t.id,
         date: t.date,
@@ -389,14 +455,16 @@ export async function getPurchaseHistory(): Promise<SalesHistoryItem[]> {
                 name: i.product?.name || "Unknown",
             },
         })),
-        // Add supplier info if needed in UI, but SalesHistoryItem might not have it.
-        // For now, let's stick to the interface.
     }))
 }
 
-// --- INSIGHTS & SUMMARIES ---
-
+// 10. Purchase summary
 export async function getPurchaseSummary(): Promise<PurchaseSummary> {
+    await checkReportPermission("reports:read_history")
+    return getPurchaseSummaryCached()
+}
+
+async function getPurchaseSummaryCached(): Promise<PurchaseSummary> {
     "use cache"
     cacheTag("reports", "purchases-summary")
     cacheLife("minutes")
@@ -417,7 +485,13 @@ export async function getPurchaseSummary(): Promise<PurchaseSummary> {
     }
 }
 
+// 11. Supplier summary
 export async function getSupplierSummary(): Promise<EntitySummary> {
+    await checkReportPermission("reports:read_history")
+    return getSupplierSummaryCached()
+}
+
+async function getSupplierSummaryCached(): Promise<EntitySummary> {
     "use cache"
     cacheTag("reports", "suppliers-summary")
     cacheLife("minutes")
@@ -456,7 +530,13 @@ export async function getSupplierSummary(): Promise<EntitySummary> {
     }
 }
 
+// 12. Customer summary
 export async function getCustomerSummary(): Promise<EntitySummary> {
+    await checkReportPermission("reports:read_history")
+    return getCustomerSummaryCached()
+}
+
+async function getCustomerSummaryCached(): Promise<EntitySummary> {
     "use cache"
     cacheTag("reports", "customers-summary")
     cacheLife("minutes")
