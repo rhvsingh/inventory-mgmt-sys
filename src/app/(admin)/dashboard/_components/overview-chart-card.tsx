@@ -1,5 +1,5 @@
 import { getSalesHistory } from "@/actions/reports"
-import { OverviewChart } from "@/components/overview-chart"
+import { OverviewChartLazy } from "@/components/overview-chart-lazy"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export async function OverviewChartCard({ permissions = [] }: { permissions?: string[] }) {
@@ -13,7 +13,10 @@ export async function OverviewChartCard({ permissions = [] }: { permissions?: st
         .slice(0, 50)
         .reduce(
             (acc, sale) => {
-                const date = new Date(sale.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                const date = new Date(sale.date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                })
                 const existing = acc.find((d) => d.name === date)
                 if (existing) {
                     existing.total += sale.total
@@ -32,7 +35,7 @@ export async function OverviewChartCard({ permissions = [] }: { permissions?: st
                 <CardTitle>Overview</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
-                <OverviewChart data={chartData} />
+                <OverviewChartLazy data={chartData} />
             </CardContent>
         </Card>
     )
