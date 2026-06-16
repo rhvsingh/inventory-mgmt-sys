@@ -1,9 +1,15 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
+import { auth } from "@/auth"
 
 export const metadata: Metadata = {
     title: "New Sale",
 }
 
-export default function NewSaleLayout({ children }: { children: React.ReactNode }) {
+export default async function NewSaleLayout({ children }: { children: React.ReactNode }) {
+    const session = await auth()
+    if (!session || !session.user.permissions?.includes("transactions:create")) {
+        redirect("/dashboard")
+    }
     return <>{children}</>
 }

@@ -13,9 +13,8 @@ export const metadata: Metadata = {
 
 export default async function BulkPurchasePage() {
     const session = await auth()
-    if (!session?.user) redirect("/login")
-    if (session.user.role !== "ADMIN" && session.user.role !== "MANAGER") {
-        return <div>Unauthorized</div>
+    if (!session || !session.user.permissions?.includes("transactions:create")) {
+        redirect("/purchases")
     }
 
     const { data: suppliers } = await getSuppliers({ limit: 100 })

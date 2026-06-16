@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
 import { auth } from "@/auth"
@@ -18,8 +19,10 @@ interface PurchasesPageProps {
 
 export default async function PurchasesPage({ searchParams }: PurchasesPageProps) {
     const session = await auth()
-    const role = session?.user?.role
-    const canManage = role === "ADMIN" || role === "MANAGER"
+    if (!session || !session.user.permissions?.includes("transactions:read")) {
+        redirect("/dashboard")
+    }
+    const canManage = session.user.permissions.includes("transactions:create")
 
     const params = await searchParams
     const page = Number(params.page) || 1
