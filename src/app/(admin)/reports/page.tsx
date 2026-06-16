@@ -2,8 +2,17 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
+import {
+    getCustomerStatsForExport,
+    getLowStockReport,
+    getPurchaseHistoryForExport,
+    getSalesHistoryForExport,
+    getSupplierStatsForExport,
+    getValuationReportForExport,
+} from "@/actions/reports"
 import { auth } from "@/auth"
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
+import { ExportButton } from "@/components/export-button"
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { ReportTabs } from "./_components/client-tabs"
@@ -49,6 +58,60 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
     if (!allowedTabs.some((t) => t.value === activeTab)) {
         redirect(`/reports?tab=${allowedTabs[0].value}`)
+    }
+
+    let exportButton = null
+    switch (activeTab) {
+        case "low-stock":
+            exportButton = (
+                <ExportButton filename="low_stock_report" fetchData={getLowStockReport} label="Export Low Stock" />
+            )
+            break
+        case "valuation":
+            exportButton = (
+                <ExportButton
+                    filename="inventory_valuation_report"
+                    fetchData={getValuationReportForExport}
+                    label="Export Valuation"
+                />
+            )
+            break
+        case "sales":
+            exportButton = (
+                <ExportButton
+                    filename="sales_history_report"
+                    fetchData={getSalesHistoryForExport}
+                    label="Export Sales History"
+                />
+            )
+            break
+        case "purchases":
+            exportButton = (
+                <ExportButton
+                    filename="purchase_history_report"
+                    fetchData={getPurchaseHistoryForExport}
+                    label="Export Purchase History"
+                />
+            )
+            break
+        case "suppliers":
+            exportButton = (
+                <ExportButton
+                    filename="supplier_stats_report"
+                    fetchData={getSupplierStatsForExport}
+                    label="Export Supplier Stats"
+                />
+            )
+            break
+        case "customers":
+            exportButton = (
+                <ExportButton
+                    filename="customer_stats_report"
+                    fetchData={getCustomerStatsForExport}
+                    label="Export Customer Stats"
+                />
+            )
+            break
     }
 
     let tabContent = null
@@ -157,9 +220,12 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
-                <RefreshButton />
+                <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row">
+                    {exportButton}
+                    <RefreshButton />
+                </div>
             </div>
 
             <Suspense fallback={<ReportCardsSkeleton />}>

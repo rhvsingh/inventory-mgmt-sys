@@ -31,6 +31,20 @@ async function checkReportPermission(action: Action) {
     }
 }
 
+export interface ExportedSupplierStats {
+    SupplierID: string
+    SupplierName: string
+    TotalPurchased: number
+    PurchaseCount: number
+}
+
+export interface ExportedCustomerStats {
+    CustomerID: string
+    CustomerName: string
+    TotalSpent: number
+    SaleCount: number
+}
+
 // 1. Low stock report
 export async function getLowStockReport(): Promise<LowStockReportItem[]> {
     await checkReportPermission("reports:read_low_stock")
@@ -575,4 +589,169 @@ async function getCustomerSummaryCached(): Promise<EntitySummary> {
         topPerformerName: topName,
         topPerformerValue: Number(topCustomer[0]?._sum.total || 0),
     }
+}
+
+// Export specific actions
+export async function getValuationReportForExport() {
+    await checkReportPermission("reports:read_valuation")
+    const valuation = await getInventoryValuation()
+    return valuation.products.map((p) => ({
+        SKU: p.sku,
+        Name: p.name,
+        StockQty: p.stockQty,
+        CostPrice: p.costPrice,
+        SalePrice: p.salePrice,
+        TotalCostValue: p.stockQty * p.costPrice,
+        TotalRetailValue: p.stockQty * p.salePrice,
+    }))
+}
+
+export async function getSalesHistoryForExport() {
+    await checkReportPermission("reports:read_history")
+    const transactions = await prisma.transaction.findMany({
+        where: { type: "SALE" },
+        include: {
+            user: { select: { name: true, email: true } },
+            items: { include: { product: { select: { name: true, sku: true } } } },
+            customer: true,
+        },
+        orderBy: { date: "desc" },
+    })
+
+    return transactions.map((t) => {
+        const itemsList = t.items
+            .map((i) => `${i.product?.name || "Unknown"} (SKU: ${i.product?.sku || "N/A"}) x${i.quantity}`)
+            .join("; ")
+        return {
+            ID: t.id,
+            Date: t.date,
+            Total: Number(t.total),
+            User: t.user?.name || "Unknown",
+            Customer: t.customer?.name || "Walk-in Customer",
+            Items: itemsList,
+        }
+    })
+}
+
+export async function getPurchaseHistoryForExport() {
+    await checkReportPermission("reports:read_history")
+    const transactions = await prisma.transaction.findMany({
+        where: { type: "PURCHASE" },
+        include: {
+            user: { select: { name: true, email: true } },
+            items: { include: { product: { select: { name: true, sku: true } } } },
+            supplier: true,
+        },
+        orderBy: { date: "desc" },
+    })
+
+    return transactions.map((t) => {
+        const itemsList = t.items
+            .map((i) => `${i.product?.name || "Unknown"} (SKU: ${i.product?.sku || "N/A"}) x${i.quantity}`)
+            .join("; ")
+        return {
+            ID: t.id,
+            Date: t.date,
+            Total: Number(t.total),
+            User: t.user?.name || "Unknown",
+            Supplier: t.supplier?.name || "Unknown Supplier",
+            Items: itemsList,
+        }
+    })
+}
+
+export async function getSupplierStatsForExport(): Promise<ExportedSupplierStats[]> {
+    await checkReportPermission("reports:read_history")
+    const grouped = await prisma.transaction.groupBy({
+        by: ["supplierId"],
+        where: {
+            type: "PURCHASE",
+            supplierId: { not: null },
+        },
+        _sum: {
+            total: true,
+        },
+        _count: {
+            id: true,
+        },
+        orderBy: {
+            _sum: {
+                total: "desc",
+            },
+        },
+    })
+
+    const supplierIds = grouped.map((g) => g.supplierId).filter((id): id is string => id !== null)
+
+    const suppliers = await prisma.supplier.findMany({
+        where: {
+            id: { in: supplierIds },
+        },
+        select: {
+            id: true,
+            name: true,
+        },
+    })
+
+    const supplierMap = new Map(suppliers.map((s) => [s.id, s.name]))
+
+    return grouped.reduce<ExportedSupplierStats[]>((acc, g) => {
+        if (g.supplierId) {
+            acc.push({
+                SupplierID: g.supplierId,
+                SupplierName: supplierMap.get(g.supplierId) || "Unknown",
+                TotalPurchased: Number(g._sum.total || 0),
+                PurchaseCount: g._count.id,
+            })
+        }
+        return acc
+    }, [])
+}
+
+export async function getCustomerStatsForExport(): Promise<ExportedCustomerStats[]> {
+    await checkReportPermission("reports:read_history")
+    const grouped = await prisma.transaction.groupBy({
+        by: ["customerId"],
+        where: {
+            type: "SALE",
+            customerId: { not: null },
+        },
+        _sum: {
+            total: true,
+        },
+        _count: {
+            id: true,
+        },
+        orderBy: {
+            _sum: {
+                total: "desc",
+            },
+        },
+    })
+
+    const customerIds = grouped.map((g) => g.customerId).filter((id): id is string => id !== null)
+
+    const customers = await prisma.customer.findMany({
+        where: {
+            id: { in: customerIds },
+        },
+        select: {
+            id: true,
+            name: true,
+        },
+    })
+
+    const customerMap = new Map(customers.map((c) => [c.id, c.name]))
+
+    return grouped.reduce<ExportedCustomerStats[]>((acc, g) => {
+        if (g.customerId) {
+            acc.push({
+                CustomerID: g.customerId,
+                CustomerName: customerMap.get(g.customerId) || "Unknown",
+                TotalSpent: Number(g._sum.total || 0),
+                SaleCount: g._count.id,
+            })
+        }
+        return acc
+    }, [])
 }

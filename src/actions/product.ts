@@ -5,6 +5,8 @@ import "server-only"
 import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
+
+import { logActivity } from "@/actions/audit"
 import { auth } from "@/auth"
 import { Authz } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
@@ -77,9 +79,10 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
     }
 
     try {
-        await prisma.product.create({
+        const product = await prisma.product.create({
             data: dataToCreate,
         })
+        await logActivity("PRODUCT_CREATE", { id: product.id, sku: product.sku, name: product.name })
     } catch (error) {
         console.error("Failed to create product:", error)
         if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
@@ -168,10 +171,11 @@ export async function updateProduct(
     }
 
     try {
-        await prisma.product.update({
+        const product = await prisma.product.update({
             where: { id },
             data: dataToUpdate,
         })
+        await logActivity("PRODUCT_UPDATE", { id: product.id, sku: product.sku, name: product.name })
     } catch (error) {
         console.error("Failed to update product:", error)
         if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
@@ -276,9 +280,11 @@ export async function deleteProduct(id: string) {
             await deleteImage(product.imageUrl)
         }
 
-        await prisma.product.delete({
+        const deletedProduct = await prisma.product.delete({
             where: { id },
+            select: { id: true, sku: true, name: true },
         })
+        await logActivity("PRODUCT_DELETE", deletedProduct)
         revalidateTag("products", "minutes")
         revalidateTag("reports", "minutes")
         revalidatePath("/products")
@@ -466,4 +472,64 @@ export async function getProduct(id: string): Promise<Product | null> {
         where: { id },
     })
     return serializePrisma(product)
+}
+
+export type ExportedProduct = Omit<Product, "supplier"> & {
+    supplier?: { name: string } | null
+}
+
+export async function getAllProductsForExport(query?: string, filters?: ProductFilters): Promise<ExportedProduct[]> {
+    const session = await auth()
+    if (!session?.user) return []
+    const authCheck = Authz.check(session.user, "products:read")
+    if (!authCheck.authorized) return []
+
+    const where: Prisma.ProductWhereInput = {}
+
+    if (query) {
+        where.OR = [
+            { name: { contains: query, mode: "insensitive" as const } },
+            { sku: { contains: query, mode: "insensitive" as const } },
+            { brand: { contains: query, mode: "insensitive" as const } },
+            { category: { contains: query, mode: "insensitive" as const } },
+        ]
+    }
+
+    if (filters?.categories?.length) {
+        where.category = { in: filters.categories }
+    }
+
+    if (filters?.brands?.length) {
+        where.brand = { in: filters.brands }
+    }
+
+    if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
+        where.salePrice = {}
+        if (filters.minPrice !== undefined) where.salePrice.gte = filters.minPrice
+        if (filters.maxPrice !== undefined) where.salePrice.lte = filters.maxPrice
+    }
+
+    if (filters?.inStock) {
+        where.stockQty = { gt: 0 }
+    }
+
+    if (filters?.isArchived !== undefined) {
+        where.isArchived = filters.isArchived
+    } else {
+        where.isArchived = false
+    }
+
+    const products = await prisma.product.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        include: {
+            supplier: {
+                select: {
+                    name: true,
+                },
+            },
+        },
+    })
+
+    return serializePrisma(products)
 }

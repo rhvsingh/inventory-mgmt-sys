@@ -4,9 +4,11 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
+import { getAllProductsForExport, getProducts } from "@/actions/product"
 import type { ProductFilters as ProductFiltersType } from "@/actions/product"
 import { auth } from "@/auth"
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
+import { ExportButton } from "@/components/export-button"
 import { SearchInput } from "@/components/search-input"
 import { Button } from "@/components/ui/button"
 
@@ -66,6 +68,10 @@ export default async function ProductsPage({
                             </Button>
                         </Link>
                     )}
+                    <ExportButton
+                        filename="products_export"
+                        fetchData={getAllProductsForExport.bind(null, q, filters)}
+                    />
                     {canCreate && (
                         <Link href="/products/new">
                             <Button className="gap-2 w-full sm:w-auto">
