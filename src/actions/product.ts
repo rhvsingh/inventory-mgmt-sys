@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { auth } from "@/auth"
+import { Authz } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
 import { serializePrisma } from "@/lib/prisma-utils"
 import { productSchema } from "@/lib/schemas"
@@ -12,9 +13,12 @@ import type { ActionState, Product } from "@/types"
 
 export async function createProduct(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
+    }
+    const authCheck = Authz.check(session.user, "products:create")
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
     const rawData = {
         sku: formData.get("sku"),
@@ -95,9 +99,12 @@ export async function updateProduct(
     formData: FormData
 ): Promise<ActionState> {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
+    }
+    const authCheck = Authz.check(session.user, "products:update")
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
     const rawData = {
         sku: formData.get("sku"),
@@ -175,9 +182,12 @@ export async function updateProduct(
 
 export async function archiveProduct(id: string) {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
+    }
+    const authCheck = Authz.check(session.user, "products:archive")
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
     try {
         await prisma.product.update({
@@ -196,9 +206,12 @@ export async function archiveProduct(id: string) {
 
 export async function unarchiveProduct(id: string) {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
+    }
+    const authCheck = Authz.check(session.user, "products:archive")
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
     try {
         await prisma.product.update({
@@ -217,26 +230,25 @@ export async function unarchiveProduct(id: string) {
 
 export async function deleteProduct(id: string) {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
     }
 
-    // Check for dependencies
     const dependencyCount = await prisma.transactionItem.count({
         where: { productId: id },
     })
-
-    if (dependencyCount > 0) {
-        return { error: "Cannot delete product with existing sales or purchases. Please archive it instead." }
-    }
 
     const adjustmentCount = await prisma.adjustment.count({
         where: { productId: id },
     })
 
-    if (adjustmentCount > 0) {
-        return { error: "Cannot delete product with inventory adjustments. Please archive it instead." }
+    const hasDependencies = dependencyCount > 0 || adjustmentCount > 0
+
+    const authCheck = Authz.check(session.user, "products:delete", {
+        product: { hasDependencies }
+    })
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
 
     try {
