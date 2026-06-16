@@ -2,8 +2,8 @@ import { getSalesHistory } from "@/actions/reports"
 import { OverviewChart } from "@/components/overview-chart"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export async function OverviewChartCard({ role }: { role?: string }) {
-    const canSeeFinancials = role === "ADMIN" || role === "MANAGER"
+export async function OverviewChartCard({ permissions = [] }: { permissions?: string[] }) {
+    const canSeeFinancials = permissions.includes("reports:history")
 
     if (!canSeeFinancials) return null
 

@@ -2,8 +2,8 @@ import { getInventoryValuation } from "@/actions/reports"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
 
-export async function InventoryCards({ role }: { role?: string }) {
-    const canSeeFinancials = role === "ADMIN" || role === "MANAGER"
+export async function InventoryCards({ permissions = [] }: { permissions?: string[] }) {
+    const canSeeFinancials = permissions.includes("reports:valuation")
 
     if (!canSeeFinancials) return null
 
