@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { getProducts } from "@/actions/product"
 import { getAllSuppliers } from "@/actions/supplier"
 import { createTransaction } from "@/actions/transaction"
+import { ProductSelect } from "@/components/product-select"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
@@ -22,73 +23,6 @@ interface PurchaseItem {
     productId: string
     quantity: number
     price: number
-}
-
-interface ProductSelectProps {
-    products: Product[]
-    value: string
-    onChange: (value: string) => void
-}
-
-function ProductSelect({ products, value, onChange }: ProductSelectProps) {
-    const [open, setOpen] = useState(false)
-
-    const selectedProduct = products.find((product) => product.id === value)
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className="flex justify-between px-3 whitespace-normal min-h-9 h-auto text-left"
-                >
-                    <span className="w-auto">
-                        {value
-                            ? selectedProduct
-                                ? `${selectedProduct.name} (${selectedProduct.sku})`
-                                : "Product not found"
-                            : "Select product..."}
-                    </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-75 p-0" align="start">
-                <Command>
-                    <CommandInput placeholder="Search product..." />
-                    <CommandList>
-                        <CommandEmpty>No product found.</CommandEmpty>
-                        <CommandGroup>
-                            {products.map((product) => (
-                                <CommandItem
-                                    key={product.id}
-                                    value={`${product.name} ${product.sku}`} // Search by name and SKU
-                                    onSelect={() => {
-                                        onChange(product.id)
-                                        setOpen(false)
-                                    }}
-                                >
-                                    <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            value === product.id ? "opacity-100" : "opacity-0",
-                                        )}
-                                    />
-                                    <div className="flex flex-col">
-                                        <span>{product.name}</span>
-                                        <span className="text-xs text-muted-foreground">
-                                            SKU: {product.sku} | Stock: {product.stockQty}
-                                        </span>
-                                    </div>
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    )
 }
 
 function NewPurchaseContent() {
