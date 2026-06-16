@@ -23,15 +23,16 @@ export async function updatePassword(data: z.infer<typeof updatePasswordSchema>)
 
     // 1. Check Permissions
     const isSelfUpdate = currentUser.id === userId
-    const isAdmin = currentUser.role === "ADMIN"
+    const permissions = (currentUser as any).permissions || []
+    const canUpdateUser = permissions.includes("users:update")
 
-    if (!isSelfUpdate && !isAdmin) {
+    if (!isSelfUpdate && !canUpdateUser) {
         return { error: "Unauthorized. You can only change your own password." }
     }
 
     try {
         // 2. If Self-Update, verify current password
-        if (isSelfUpdate && !isAdmin) {
+        if (isSelfUpdate && !canUpdateUser) {
             if (!currentPassword) {
                 return { error: "Current password is required" }
             }
