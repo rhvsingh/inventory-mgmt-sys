@@ -78,7 +78,7 @@ export default async function SettingsPage() {
                         </CardContent>
                     </Card>
 
-                    {(user.role === "ADMIN" || user.role === "MANAGER") && (
+                    {user.permissions?.includes("notifications:read") && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Notifications</CardTitle>

@@ -12,7 +12,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export function NotificationBell({ role }: { role?: string }) {
+export function NotificationBell({ permissions = [] }: { permissions?: string[] }) {
     const [alerts, setAlerts] = useState<{ id: string; name: string; stockQty: number; minStock: number }[]>([])
     const [intervalSeconds, setIntervalSeconds] = useState(30)
 
@@ -60,7 +60,7 @@ export function NotificationBell({ role }: { role?: string }) {
             <DropdownMenuContent align="end" className="w-80">
                 <div className="flex items-center justify-between px-2 py-1.5">
                     <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
-                    {(role === "ADMIN" || role === "MANAGER") && (
+                    {permissions.includes("notifications:read") && (
                         <Link href="/settings" title="Notification Settings">
                             <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer">
                                 <Settings className="h-4 w-4" />

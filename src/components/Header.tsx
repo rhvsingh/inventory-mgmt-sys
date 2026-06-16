@@ -15,6 +15,7 @@ export function Header({
         name?: string | null
         email?: string | null
         role?: string
+        permissions?: string[]
     }
 }) {
     const [open, setOpen] = useState(false)
@@ -49,7 +50,7 @@ export function Header({
             {/* Actions */}
             <div className="flex items-center gap-2">
                 <ModeToggle />
-                <NotificationBell role={user.role} />
+                <NotificationBell permissions={user.permissions} />
             </div>
         </header>
     )
