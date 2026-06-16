@@ -23,7 +23,7 @@ export async function updatePassword(data: z.infer<typeof updatePasswordSchema>)
 
     // 1. Check Permissions
     const isSelfUpdate = currentUser.id === userId
-    const permissions = (currentUser as any).permissions || []
+    const permissions = currentUser.permissions || []
     const canUpdateUser = permissions.includes("users:update")
 
     if (!isSelfUpdate && !canUpdateUser) {
