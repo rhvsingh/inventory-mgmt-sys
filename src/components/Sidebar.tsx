@@ -1,6 +1,16 @@
 "use client"
 
-import { BarChart3, LayoutDashboard, LogOut, Package, Settings, ShoppingCart, Truck, Users } from "lucide-react"
+import {
+    BarChart3,
+    History,
+    LayoutDashboard,
+    LogOut,
+    Package,
+    Settings,
+    ShoppingCart,
+    Truck,
+    Users,
+} from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { logout } from "@/actions/auth"
@@ -14,6 +24,7 @@ const navItems = [
     { href: "/purchases", icon: Truck, label: "Purchases" },
     { href: "/reports", icon: BarChart3, label: "Reports" },
     { href: "/users", icon: Users, label: "Users" }, // Admin only usually
+    { href: "/audit-logs", icon: History, label: "Audit Logs" },
 ]
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -34,6 +45,9 @@ export function Sidebar({ className, onClose, user }: SidebarProps) {
         const permissions = user.permissions || []
         if (item.href === "/users") {
             return permissions.includes("users:read")
+        }
+        if (item.href === "/audit-logs") {
+            return permissions.includes("audit_logs:read")
         }
         if (item.href === "/reports") {
             return permissions.includes("reports:valuation") || permissions.includes("reports:history")
