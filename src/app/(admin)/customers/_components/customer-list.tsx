@@ -3,10 +3,10 @@
 import type { Customer } from "@prisma/client"
 import { MoreHorizontal, Pen, Search, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { deleteCustomer } from "@/actions/customer"
+import { SearchInput } from "@/components/search-input"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,7 +27,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 interface CustomerListProps {
@@ -52,38 +51,10 @@ export function CustomerList({ customers }: Omit<CustomerListProps, "metadata">)
         }
     }
 
-    const searchParams = useSearchParams()
-    const [search, setSearch] = useState(searchParams.get("search") || "")
-
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            const params = new URLSearchParams(searchParams)
-            const currentSearch = params.get("search") || ""
-            if (search !== currentSearch) {
-                if (search) {
-                    params.set("search", search)
-                } else {
-                    params.delete("search")
-                }
-                params.set("page", "1")
-                router.replace(`?${params.toString()}`)
-            }
-        }, 300)
-        return () => clearTimeout(timeout)
-    }, [search, router, searchParams])
-
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
-                <div className="relative max-w-sm flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search customers..."
-                        className="pl-8"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
+                <SearchInput placeholder="Search customers..." paramName="search" />
             </div>
             <div className="rounded-md border">
                 <Table>
@@ -146,7 +117,8 @@ export function CustomerList({ customers }: Omit<CustomerListProps, "metadata">)
                                                         <AlertDialogHeader>
                                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                This action cannot be undone. This will permanently delete this customer.
+                                                                This action cannot be undone. This will permanently
+                                                                delete this customer.
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>

@@ -1,12 +1,12 @@
 "use client"
 
 import { format } from "date-fns"
-import { Eye, Search } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { Eye } from "lucide-react"
+import { useState } from "react"
+import { Pagination } from "@/components/pagination"
+import { SearchInput } from "@/components/search-input"
 import { TransactionDetailsDialog } from "@/components/transaction-details-dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
 import type { Product, Transaction, TransactionItem } from "@/types"
@@ -24,45 +24,14 @@ interface SaleListProps {
     }
 }
 
-import { Pagination } from "@/components/pagination"
-
 export function SaleList({ sales, metadata }: SaleListProps) {
-    const router = useRouter()
-    const searchParams = useSearchParams()
     const [selectedSale, setSelectedSale] = useState<SaleWithItems | null>(null)
     const [detailsOpen, setDetailsOpen] = useState(false)
-    const [search, setSearch] = useState(searchParams.get("search") || "")
-
-    // Debounce search update
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            const params = new URLSearchParams(searchParams)
-            const currentSearch = params.get("search") || ""
-            if (search !== currentSearch) {
-                if (search) {
-                    params.set("search", search)
-                } else {
-                    params.delete("search")
-                }
-                params.set("page", "1") // Reset page on search
-                router.replace(`?${params.toString()}`)
-            }
-        }, 300)
-        return () => clearTimeout(timeout)
-    }, [search, router, searchParams])
 
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
-                <div className="relative max-w-sm flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search sales..."
-                        className="pl-8"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
+                <SearchInput placeholder="Search sales..." paramName="search" />
             </div>
 
             <div className="rounded-md border bg-card">
