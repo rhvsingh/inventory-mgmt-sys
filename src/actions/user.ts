@@ -71,8 +71,12 @@ export async function getUsers(
 		throw new Error(authCheck.reason || "Unauthorized");
 	}
 
-	const { users, total } = await getCachedUsers(page, limit);
-	const totalPages = Math.ceil(total / limit);
+	// SEC-09: Clamp pagination bounds
+	const safePage = Math.max(1, Math.floor(page));
+	const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 100);
+
+	const { users, total } = await getCachedUsers(safePage, safeLimit);
+	const totalPages = Math.ceil(total / safeLimit);
 
 	return {
 		data: serializePrisma(users) as User[],
@@ -323,21 +327,11 @@ export async function updateProfile(
 	}
 
 	try {
-		const id = formData.get("id") as string;
-		if (!id) return { error: "User ID missing" };
-
-		const authCheck = Authz.check(session.user, "users:update", {
-			userProfile: {
-				id,
-				role: "",
-			},
-		});
-		if (!authCheck.authorized) {
-			return { error: authCheck.reason || "Unauthorized" };
-		}
+		// SEC-11: Always use session user ID — never trust client-provided ID for self-update
+		const userId = session.user.id;
 
 		await prisma.user.update({
-			where: { id },
+			where: { id: userId },
 			data: {
 				name: rawData.name as string,
 				email: rawData.email as string,

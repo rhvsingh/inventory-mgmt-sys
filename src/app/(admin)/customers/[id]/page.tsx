@@ -27,6 +27,9 @@ export default async function CustomerDetailsPage({
     const { page: pageStr } = await searchParams
     const session = await auth()
     if (!session?.user) redirect("/login")
+    if (!session.user.permissions?.includes("customers:read")) {
+        redirect("/dashboard")
+    }
 
     const customer = await getCustomer(id)
     if (!customer) notFound()

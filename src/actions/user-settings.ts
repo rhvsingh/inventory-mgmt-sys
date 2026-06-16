@@ -1,5 +1,7 @@
 "use server"
 
+import "server-only"
+
 import bcrypt from "bcryptjs"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -31,8 +33,9 @@ export async function updatePassword(data: z.infer<typeof updatePasswordSchema>)
     }
 
     try {
-        // 2. If Self-Update, verify current password
-        if (isSelfUpdate && !canUpdateUser) {
+        // 2. SEC-12: Always verify current password for self-updates (regardless of admin status)
+        //    This prevents password takeover if an admin session is hijacked.
+        if (isSelfUpdate) {
             if (!currentPassword) {
                 return { error: "Current password is required" }
             }

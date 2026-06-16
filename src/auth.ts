@@ -1,8 +1,10 @@
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import bcrypt from "bcryptjs"
 import NextAuth from "next-auth"
+import type { Adapter } from "next-auth/adapters"
 import Credentials from "next-auth/providers/credentials"
 import { z } from "zod"
+
 import { prisma } from "@/lib/prisma"
 import { authConfig } from "./auth.config"
 
@@ -41,8 +43,6 @@ async function getUserWithPermissions(email: string) {
     }
 }
 
-import type { Adapter } from "next-auth/adapters"
-
 export const { auth, handlers, signIn, signOut } = NextAuth({
     ...authConfig,
     adapter: PrismaAdapter(prisma) as Adapter,
@@ -51,7 +51,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     providers: [
         Credentials({
             async authorize(credentials) {
-                console.log("DEBUG AUTH: authorize called with", credentials?.email)
                 const parsedCredentials = z
                     .object({ email: z.string().email(), password: z.string().min(6) })
                     .safeParse(credentials)
@@ -64,7 +63,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
                     const passwordsMatch = await bcrypt.compare(password, user.password)
                     if (passwordsMatch) return user
                 }
-                console.log("Invalid credentials")
                 return null
             },
         }),
@@ -80,11 +78,17 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             return session
         },
         async jwt({ token }) {
-            if (!token.role && token.email) {
+            // SEC-05: Re-fetch permissions periodically to pick up role/permission changes
+            const REFRESH_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
+            const lastUpdated = (token.permissionsUpdatedAt as number) || 0
+            const shouldRefresh = !token.role || Date.now() - lastUpdated > REFRESH_INTERVAL_MS
+
+            if (shouldRefresh && token.email) {
                 const user = await getUserWithPermissions(token.email)
                 if (user?.role) {
                     token.role = user.role.name
                     token.permissions = user.role.permissions.map((p) => p.permission.name)
+                    token.permissionsUpdatedAt = Date.now()
                 }
             }
             return token

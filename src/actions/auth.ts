@@ -1,5 +1,7 @@
 "use server"
 
+import "server-only"
+
 import { AuthError } from "next-auth"
 import { signIn, signOut } from "@/auth"
 

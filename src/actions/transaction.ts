@@ -109,6 +109,19 @@ export async function createTransaction(data: {
             for (const item of items) {
                 const qtyChange = type === "PURCHASE" ? item.quantity : -item.quantity
 
+                // SEC-04: Prevent negative stock on SALE
+                if (type === "SALE") {
+                    const saleProduct = await tx.product.findUnique({
+                        where: { id: item.productId },
+                        select: { stockQty: true, name: true },
+                    })
+                    if (saleProduct && saleProduct.stockQty + qtyChange < 0) {
+                        throw new Error(
+                            `Insufficient stock for "${saleProduct.name}". Available: ${saleProduct.stockQty}, selling: ${item.quantity}.`,
+                        )
+                    }
+                }
+
                 if (type === "PURCHASE") {
                     const currentProduct = await tx.product.findUnique({
                         where: { id: item.productId },
@@ -156,8 +169,9 @@ export async function createTransaction(data: {
             }
         })
     } catch (error) {
-        console.error("Transaction failed:", error)
-        return { error: "Transaction failed" }
+        const message = error instanceof Error ? error.message : "Transaction failed"
+        console.error("Transaction failed:", message)
+        return { error: message }
     }
 
     revalidateTag("transactions", "minutes")
@@ -196,22 +210,26 @@ export async function getTransactions(
     const isClerk = session.user.role === "Clerk"
     const userIdFilter = isClerk ? session.user.id : undefined
 
+    // SEC-09: Clamp pagination bounds
+    const safePage = Math.max(1, Math.floor(page))
+    const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 100)
+
     const { transactions, total } = await getCachedTransactions(
         type,
-        page,
-        limit,
+        safePage,
+        safeLimit,
         search,
         customerId,
         supplierId,
         userIdFilter,
     )
-    const totalPages = Math.ceil(total / limit)
+    const totalPages = Math.ceil(total / safeLimit)
 
     return {
         data: serializePrisma(transactions) as Transaction[],
         metadata: {
             total,
-            page,
+            page: safePage,
             totalPages,
         },
     }

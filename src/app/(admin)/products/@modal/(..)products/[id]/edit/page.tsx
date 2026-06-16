@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { getProduct, updateProduct } from "@/actions/product"
 
 import { getAllSuppliers } from "@/actions/supplier"
+import { auth } from "@/auth"
 import { InterceptedDialog } from "@/components/intercepted-dialog"
 import { ProductForm } from "@/components/product-form"
 
@@ -11,6 +12,11 @@ export const metadata: Metadata = {
 }
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+    const session = await auth()
+    if (!session || !session.user.permissions?.includes("products:update")) {
+        return null
+    }
+
     const { id } = await params
     const product = await getProduct(id)
     const suppliers = await getAllSuppliers()

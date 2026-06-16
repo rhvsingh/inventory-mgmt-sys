@@ -59,6 +59,22 @@ export const PERMISSIONS = {
     notification: {
         read: p("notifications:read"),
     },
+
+    // ─── CUSTOMERS ──────────────────────────────────────────────
+    customer: {
+        create: p("customers:create"),
+        read: p("customers:read"),
+        update: p("customers:update"),
+        delete: p("customers:delete"),
+    },
+
+    // ─── SUPPLIERS ──────────────────────────────────────────────
+    supplier: {
+        create: p("suppliers:create"),
+        read: p("suppliers:read"),
+        update: p("suppliers:update"),
+        delete: p("suppliers:delete"),
+    },
 } as const
 
 /**
@@ -101,4 +117,14 @@ export const actionToPermissionMap: Record<Action, Permission> = {
     "reports:read_valuation": PERMISSIONS.report.valuation,
     // Notifications
     "notifications:read": PERMISSIONS.notification.read,
+    // Customers
+    "customers:create": PERMISSIONS.customer.create,
+    "customers:read": PERMISSIONS.customer.read,
+    "customers:update": PERMISSIONS.customer.update,
+    "customers:delete": PERMISSIONS.customer.delete,
+    // Suppliers
+    "suppliers:create": PERMISSIONS.supplier.create,
+    "suppliers:read": PERMISSIONS.supplier.read,
+    "suppliers:update": PERMISSIONS.supplier.update,
+    "suppliers:delete": PERMISSIONS.supplier.delete,
 }

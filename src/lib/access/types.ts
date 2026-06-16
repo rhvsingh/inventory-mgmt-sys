@@ -35,6 +35,16 @@ export type Action =
     | "reports:read_low_stock"
     | "reports:read_history"
     | "reports:read_valuation"
+    // ─── Customers ────────────────────────────────────────────────
+    | "customers:create"
+    | "customers:read"
+    | "customers:update"
+    | "customers:delete"
+    // ─── Suppliers ────────────────────────────────────────────────
+    | "suppliers:create"
+    | "suppliers:read"
+    | "suppliers:update"
+    | "suppliers:delete"
     // ─── Notifications ────────────────────────────────────────────
     | "notifications:read"
 

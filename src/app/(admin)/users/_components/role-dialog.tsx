@@ -69,6 +69,19 @@ const permissionGroups = [
         title: "System Alerts",
         permissions: ["notifications:read"],
     },
+    {
+        title: "Customers & Suppliers",
+        permissions: [
+            "customers:create",
+            "customers:read",
+            "customers:update",
+            "customers:delete",
+            "suppliers:create",
+            "suppliers:read",
+            "suppliers:update",
+            "suppliers:delete",
+        ],
+    },
 ]
 
 export function RoleDialog({ role, allPermissions }: RoleDialogProps) {

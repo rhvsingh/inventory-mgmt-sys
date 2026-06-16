@@ -1,10 +1,11 @@
 import { ArrowLeft } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 
 import { getProduct, updateProduct } from "@/actions/product"
 import { getAllSuppliers } from "@/actions/supplier"
+import { auth } from "@/auth"
 import { ProductForm } from "@/components/product-form"
 import { Button } from "@/components/ui/button"
 
@@ -13,6 +14,11 @@ export const metadata: Metadata = {
 }
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+    const session = await auth()
+    if (!session || !session.user.permissions?.includes("products:update")) {
+        redirect("/products")
+    }
+
     const { id } = await params
     const [product, suppliers] = await Promise.all([getProduct(id), getAllSuppliers()])
 

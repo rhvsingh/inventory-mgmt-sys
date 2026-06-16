@@ -46,6 +46,16 @@ async function main() {
             name: "notifications:read",
             description: "Read stock alert notifications",
         },
+        // ─── Customers ────────────────────────────────────────────
+        { name: "customers:create", description: "Create new customers" },
+        { name: "customers:read", description: "View customer list" },
+        { name: "customers:update", description: "Update customer details" },
+        { name: "customers:delete", description: "Delete customers" },
+        // ─── Suppliers ────────────────────────────────────────────
+        { name: "suppliers:create", description: "Create new suppliers" },
+        { name: "suppliers:read", description: "View supplier list" },
+        { name: "suppliers:update", description: "Update supplier details" },
+        { name: "suppliers:delete", description: "Delete suppliers" },
     ]
 
     console.log("Seeding permissions...")
@@ -128,6 +138,14 @@ async function main() {
         "reports:valuation",
         "reports:history",
         "notifications:read",
+        "customers:create",
+        "customers:read",
+        "customers:update",
+        "customers:delete",
+        "suppliers:create",
+        "suppliers:read",
+        "suppliers:update",
+        "suppliers:delete",
     ]
     await prisma.rolePermission.createMany({
         data: managerPermissions.map((name) => ({
@@ -145,6 +163,8 @@ async function main() {
         "reports:low_stock",
         "reports:history",
         "notifications:read",
+        "customers:read",
+        "suppliers:read",
     ]
     await prisma.rolePermission.createMany({
         data: clerkPermissions.map((name) => ({

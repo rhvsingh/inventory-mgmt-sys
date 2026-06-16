@@ -1,5 +1,6 @@
 "use server"
 
+import "server-only"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
@@ -47,6 +48,13 @@ export async function createAdjustment(formData: FormData) {
     })
     if (!authCheck.authorized) {
         return { error: authCheck.reason || "Unauthorized" }
+    }
+
+    // SEC-04: Prevent negative stock
+    if (product.stockQty + qtyChange < 0) {
+        return {
+            error: `Insufficient stock for "${product.name}". Available: ${product.stockQty}, requested change: ${qtyChange}.`,
+        }
     }
 
     const userId = session.user.id

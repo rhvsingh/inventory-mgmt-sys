@@ -1,5 +1,6 @@
 "use server"
 
+import "server-only"
 import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidateTag } from "next/cache"
 

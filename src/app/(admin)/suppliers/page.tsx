@@ -22,6 +22,9 @@ export default async function SuppliersPage({
     const { page: pageStr, search: searchRaw } = await searchParams
     const session = await auth()
     if (!session?.user) redirect("/login")
+    if (!session.user.permissions?.includes("suppliers:read")) {
+        redirect("/dashboard")
+    }
 
     const page = Number(pageStr) || 1
     const search = searchRaw || ""

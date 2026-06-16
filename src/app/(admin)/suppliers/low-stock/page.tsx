@@ -15,6 +15,9 @@ export const metadata: Metadata = {
 export default async function LowStockPage() {
     const session = await auth()
     if (!session?.user) redirect("/login")
+    if (!session.user.permissions?.includes("suppliers:read")) {
+        redirect("/dashboard")
+    }
 
     const lowStockProducts = await prisma.product.findMany({
         where: {

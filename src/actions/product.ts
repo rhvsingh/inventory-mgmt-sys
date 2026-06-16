@@ -1,5 +1,7 @@
 "use server"
 
+import "server-only"
+
 import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
@@ -54,6 +56,12 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
         }
         if (!imageFile.type.startsWith("image/")) {
             return { error: "File must be an image" }
+        }
+        // SEC-06: Validate file extension against allowlist (MIME type is client-provided and spoofable)
+        const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+        const ext = `.${imageFile.name.split(".").pop()?.toLowerCase() || ""}`
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            return { error: "Only JPG, PNG, WebP, and GIF images are allowed" }
         }
         imageUrl = await uploadImage(imageFile)
     }
@@ -139,6 +147,12 @@ export async function updateProduct(
         }
         if (!imageFile.type.startsWith("image/")) {
             return { error: "File must be an image" }
+        }
+        // SEC-06: Validate file extension against allowlist
+        const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+        const ext = `.${imageFile.name.split(".").pop()?.toLowerCase() || ""}`
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            return { error: "Only JPG, PNG, WebP, and GIF images are allowed" }
         }
         imageUrl = await uploadImage(imageFile)
     }
@@ -276,6 +290,14 @@ export async function deleteProduct(id: string) {
 }
 
 export async function getProducts(options?: { query?: string; supplierId?: string }): Promise<Product[]> {
+    // SEC-14: Auth check before returning product data
+    const session = await auth()
+    if (!session?.user) return []
+
+    return getProductsCached(options)
+}
+
+async function getProductsCached(options?: { query?: string; supplierId?: string }): Promise<Product[]> {
     "use cache"
     // Create a cache key based on options
     const queryKey = options?.query ? `query-${options.query}` : "no-query"
@@ -321,6 +343,19 @@ export interface ProductFilters {
 }
 
 export async function getProductsPaginated(
+    query?: string,
+    page: number = 1,
+    limit: number = 10,
+    filters?: ProductFilters,
+): Promise<{ products: Product[]; metadata: { total: number; page: number; totalPages: number } }> {
+    // SEC-14: Auth check before returning product data
+    const session = await auth()
+    if (!session?.user) return { products: [], metadata: { total: 0, page: 1, totalPages: 0 } }
+
+    return getProductsPaginatedCached(query, page, limit, filters)
+}
+
+async function getProductsPaginatedCached(
     query?: string,
     page: number = 1,
     limit: number = 10,

@@ -2,8 +2,11 @@ import { ArrowLeft } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 
+import { redirect } from "next/navigation"
+
 import { createProduct } from "@/actions/product"
 import { getAllSuppliers } from "@/actions/supplier"
+import { auth } from "@/auth"
 import { ProductForm } from "@/components/product-form"
 import { Button } from "@/components/ui/button"
 
@@ -12,6 +15,11 @@ export const metadata: Metadata = {
 }
 
 export default async function NewProductPage() {
+    const session = await auth()
+    if (!session || !session.user.permissions?.includes("products:create")) {
+        redirect("/products")
+    }
+
     const suppliers = await getAllSuppliers()
 
     return (
